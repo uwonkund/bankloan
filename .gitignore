@@ -1,0 +1,32 @@
+# Python files
+__pycache__/
+*.py[cod]
+*.sqlite3
+
+# Virtual environment
+venv/
+env/
+
+# Environment variables
+.env
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# Static and media files
+media/
+staticfiles/
+
+# Logs
+*.log
+
+# Migrations (optional)
+*/migrations/*.py
+!*/migrations/__init__.py
+
+# OS files
+.DS_Store
+Thumbs.db
