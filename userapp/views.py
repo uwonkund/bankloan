@@ -1,12 +1,17 @@
 from django.shortcuts import render
 from rest_framework_simplejwt.views import TokenViewBase 
 from rest_framework.views import APIView
+from rest_framework import viewsets,status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.exceptions import TokenError ,InvalidToken
-from userapp.serializers import CustomTokenObtainPairSerializer
-from django.contrib.auth.models import User
+from userapp.serializers import CustomTokenObtainPairSerializer,UserSerializer
+from userapp.models import User
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset=User.objects.filter()
+    serializer_class=UserSerializer
 
 class LoginMixin(APIView):
     '''

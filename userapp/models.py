@@ -11,6 +11,13 @@ from django.core.validators import MinLengthValidator, MaxLengthValidator
 
 #     def _str_(self):
 #         return self.name
+# class Bank_admin(models.Model):
+#     name = models.CharField(max_length=100)
+#     email = models.EmailField(unique=True)
+#     phone = models.CharField(max_length=20)
+
+#     def _str_(self):
+#         return self.name    
 class UserManager(BaseUserManager):
 
     def create_user(self,email, full_name, phone_number,password=None, **extra_fields):
