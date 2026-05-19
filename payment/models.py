@@ -3,6 +3,13 @@ from decimal import Decimal
 from django.utils import timezone
 from dateutil.relativedelta import relativedelta
 
+# Create your models here.
+
+from decimal import Decimal
+from django.utils import timezone
+from dateutil.relativedelta import relativedelta
+
+# Create your models here.
 
 class PaymentSchedule(models.Model):
 

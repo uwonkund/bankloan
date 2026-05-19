@@ -1,6 +1,7 @@
 from django.contrib import admin
 from .models import Payment, PaymentSchedule, Penalty
 
+# Register your models here.
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
     list_display = ['id', 'loan', 'schedule', 'amount_paid', 'payment_method', 'status', 'payment_date']
@@ -27,3 +28,5 @@ class PenaltyAdmin(admin.ModelAdmin):
 admin.site.site_header = "Bank Loan Management System"
 admin.site.site_title = "Penalty Dashboard"
 admin.site.index_title = "Welcome to Bank Loan Management System"    
+admin.site.index_title = "Welcome to Bank Loan Management System"   
+# Register your models here.
