@@ -1,4 +1,7 @@
 from django.db import models
+from decimal import Decimal
+from django.utils import timezone
+from dateutil.relativedelta import relativedelta
 
 # Create your models here.
 
@@ -44,10 +47,12 @@ class PaymentSchedule(models.Model):
     def calculate_monthly_amounts(self):
         """
         Split the loan into 12 equal monthly payments.
+
         Formula:
             monthly_principal = loan.amount / 12
             monthly_interest  = loan.amount x (interest_rate / 100) / 12
             total_monthly_due = monthly_principal + monthly_interest
+
         Example — RWF 1,000,000 at 17%:
             monthly_principal = RWF 83,333.33
             monthly_interest  = RWF 14,166.67
@@ -171,10 +176,12 @@ class Penalty(models.Model):
     def apply_penalty(cls, schedule):
         """
         Check the schedule and apply the correct penalty.
+
         Rule 1 — Late payment (1 month overdue):
             Add 5% to the amount due for that month.
             penalty_amount  = total_due x 5 / 100
             total_amount_due = total_due + penalty_amount
+
         Rule 2 — Collateral seizure (2 or more months missed):
             Flag the loan for collateral seizure.
             Bank staff will be notified to take action.

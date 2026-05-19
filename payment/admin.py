@@ -27,5 +27,6 @@ class PenaltyAdmin(admin.ModelAdmin):
     list_filter = ['status', 'penalty_type', 'applied_at']
 admin.site.site_header = "Bank Loan Management System"
 admin.site.site_title = "Penalty Dashboard"
+admin.site.index_title = "Welcome to Bank Loan Management System"    
 admin.site.index_title = "Welcome to Bank Loan Management System"   
 # Register your models here.
