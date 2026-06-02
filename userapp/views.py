@@ -26,6 +26,7 @@ class SocialAuthView(APIView):
 
     @extend_schema(
         summary='Continue with Google / Apple',
+        tags=['User Management'],
         description=(
             'Sign up or log in using Google or Apple.\n\n'
             '**How it works:**\n'
@@ -66,7 +67,6 @@ class SocialAuthView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Get or create user
         user, created = User.objects.get_or_create(
             email=email,
             defaults={
@@ -77,7 +77,6 @@ class SocialAuthView(APIView):
             },
         )
 
-        # Generate JWT tokens
         refresh = RefreshToken.for_user(user)
         refresh['first_name'] = user.first_name
         refresh['last_name'] = user.last_name
@@ -93,10 +92,6 @@ class SocialAuthView(APIView):
         }, status=status.HTTP_200_OK)
 
     def _verify_token(self, provider, id_token):
-        """
-        Verify the id_token with the provider and return user info dict.
-        Returns None if verification fails.
-        """
         try:
             if provider == 'google':
                 return self._verify_google_token(id_token)
@@ -123,10 +118,8 @@ class SocialAuthView(APIView):
         import jwt as pyjwt
         import urllib.request
         import json
-        # Fetch Apple public keys
         with urllib.request.urlopen('https://appleid.apple.com/auth/keys') as response:
             apple_keys = json.loads(response.read())
-        # Decode without verification first to get the key id
         header = pyjwt.get_unverified_header(id_token)
         key = next((k for k in apple_keys['keys'] if k['kid'] == header['kid']), None)
         if not key:
@@ -136,7 +129,7 @@ class SocialAuthView(APIView):
             id_token,
             public_key,
             algorithms=['RS256'],
-            audience='com.yourapp.bundleid',  # Replace with your Apple app bundle ID
+            audience='com.yourapp.bundleid',
         )
         name = data.get('name', {})
         return {
@@ -153,6 +146,7 @@ class SignUpView(generics.CreateAPIView):
 
     @extend_schema(
         summary='Sign Up',
+        tags=['User Management'],
         description='Register a new user. Required fields: first_name, last_name, email, password, re_enter_password.',
         request=UserSerializer,
         responses={
@@ -180,6 +174,7 @@ class LoginView(APIView):
 
     @extend_schema(
         summary='Login',
+        tags=['User Management'],
         description=(
             'Authenticate using email and password.\n\n'
             'Returns JWT access and refresh tokens with user claims.'
@@ -210,7 +205,6 @@ class LoginView(APIView):
                 'message': 'Login unsuccessful. Invalid email or password.',
             }, status=status.HTTP_401_UNAUTHORIZED)
 
-        # Generate JWT tokens
         refresh = RefreshToken.for_user(user)
         refresh['first_name'] = user.first_name
         refresh['last_name'] = user.last_name
@@ -229,6 +223,7 @@ class LoginView(APIView):
 
 @extend_schema(
     summary='Refresh Token',
+    tags=['User Management'],
     description='Provide a valid refresh token to get a new access token.',
 )
 class TokenRefreshView(TokenRefreshView):
@@ -240,6 +235,7 @@ class ForgotPasswordView(APIView):
 
     @extend_schema(
         summary='Forgot Password — Request Verification Code',
+        tags=['User Management'],
         description=(
             'Step 1 of password reset.\n\n'
             'Provide your email or phone number and choose the channel '
@@ -259,7 +255,6 @@ class ForgotPasswordView(APIView):
         user = serializer.validated_data['user']
         channel = serializer.validated_data['channel']
 
-        # Generate 6-digit code
         code = str(random.randint(100000, 999999))
         PasswordResetCode.objects.create(
             user=user,
@@ -268,8 +263,6 @@ class ForgotPasswordView(APIView):
             expires_at=timezone.now() + timedelta(minutes=1),
         )
 
-        # In production: send code via email (django.core.mail) or SMS gateway
-        # For now we return the destination so frontend knows where it was sent
         destination = user.email if channel == 'email' else user.phone_number
 
         return Response({
@@ -284,6 +277,7 @@ class VerifyResetCodeView(APIView):
 
     @extend_schema(
         summary='Forgot Password — Verify Code',
+        tags=['User Management'],
         description=(
             'Step 2 of password reset.\n\n'
             'Submit the 6-digit verification code received via email or phone.\n\n'
@@ -309,6 +303,7 @@ class ResetPasswordView(APIView):
 
     @extend_schema(
         summary='Forgot Password — Set New Password',
+        tags=['User Management'],
         description=(
             'Step 3 of password reset.\n\n'
             'Provide the verified code, new password and confirm password.\n\n'
@@ -335,7 +330,6 @@ class ResetPasswordView(APIView):
         user.set_password(serializer.validated_data['new_password'])
         user.save(update_fields=['password'])
 
-        # Mark code as used
         reset_code.is_used = True
         reset_code.save(update_fields=['is_used'])
 
@@ -350,6 +344,7 @@ class HomeDashboardView(APIView):
 
     @extend_schema(
         summary='Home Dashboard',
+        tags=['User Management'],
         description=(
             "Returns the logged-in user's profile, active loan summary "
             '(balance, loan token, monthly payment, next due date), and last 10 payments.'
@@ -400,6 +395,7 @@ class UpdateProfilePictureView(APIView):
 
     @extend_schema(
         summary='Update Profile Picture',
+        tags=['User Settings'],
         description="Upload or update the logged-in user's profile picture.",
         responses={200: UserProfileSerializer},
     )
@@ -418,6 +414,7 @@ class PersonalInfoView(APIView):
 
     @extend_schema(
         summary='Get Personal Information',
+        tags=['User Settings'],
         description="Returns the logged-in user's personal info.",
         responses={200: PersonalInfoSerializer},
     )
@@ -427,6 +424,7 @@ class PersonalInfoView(APIView):
 
     @extend_schema(
         summary='Update Personal Information',
+        tags=['User Settings'],
         description='Update personal info: first_name, last_name, national_id, phone_number, address, account_number.',
         request=PersonalInfoSerializer,
         responses={
@@ -444,15 +442,16 @@ class PersonalInfoView(APIView):
 
 
 @extend_schema_view(
-    list=extend_schema(summary='List Linked Bank Accounts'),
+    list=extend_schema(summary='List Linked Bank Accounts', tags=['User Settings']),
     create=extend_schema(
         summary='Add Linked Bank Account',
+        tags=['User Settings'],
         description='Link a new bank account. Set is_default=true to make it the default.',
     ),
-    retrieve=extend_schema(summary='Get Linked Bank Account'),
-    update=extend_schema(summary='Update Linked Bank Account'),
-    partial_update=extend_schema(summary='Partially Update Linked Bank Account'),
-    destroy=extend_schema(summary='Remove Linked Bank Account'),
+    retrieve=extend_schema(summary='Get Linked Bank Account', tags=['User Settings']),
+    update=extend_schema(summary='Update Linked Bank Account', tags=['User Settings']),
+    partial_update=extend_schema(summary='Partially Update Linked Bank Account', tags=['User Settings']),
+    destroy=extend_schema(summary='Remove Linked Bank Account', tags=['User Settings']),
 )
 class LinkedBankAccountViewSet(viewsets.ModelViewSet):
     serializer_class = LinkedBankAccountSerializer
@@ -468,11 +467,13 @@ class LinkedBankAccountViewSet(viewsets.ModelViewSet):
 @extend_schema_view(
     list=extend_schema(
         summary='List Notifications',
+        tags=['User Settings'],
         description='Returns all bank messages/notifications for the logged-in user.',
     ),
-    retrieve=extend_schema(summary='Get Notification'),
+    retrieve=extend_schema(summary='Get Notification', tags=['User Settings']),
     partial_update=extend_schema(
         summary='Mark Notification as Read',
+        tags=['User Settings'],
         description="Set status to 'read'.",
     ),
 )

@@ -48,10 +48,23 @@ INSTALLED_APPS = [
 
 ]
 
+# SPECTACULAR_SETTINGS = {
+#     "TITLE": "Loan Management System API",
+#     "DESCRIPTION": "API documentation for my Django project",
+#     "VERSION": "1.0.0",
+# }
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Loan Management System API",
-    "DESCRIPTION": "API documentation for my Django project",
-    "VERSION": "1.0.0",
+    'TITLE': 'Bank Loan API',
+    'DESCRIPTION': 'API documentation for Bank Loan System',
+    'VERSION': '1.0.0',
+    'TAGS': [
+        {'name': 'User Management'},
+        {'name': 'User Settings'},
+        {'name': 'Loans'},
+        {'name': 'Loan Applications'},
+        {'name': 'Loan Documents'},
+        {'name': 'Payments'},
+    ],
 }
 
 MIDDLEWARE = [

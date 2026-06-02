@@ -9,10 +9,11 @@ from loanapplication.serializers import LoanApplicationSerializer, LoanDocumentS
 
 
 @extend_schema_view(
-    list=extend_schema(summary='List my loan applications'),
-    retrieve=extend_schema(summary='Retrieve a loan application'),
+    list=extend_schema(summary='List my loan applications', tags=['Loan Applications']),
+    retrieve=extend_schema(summary='Retrieve a loan application', tags=['Loan Applications']),
     create=extend_schema(
         summary='Create a Loan Application (Draft)',
+        tags=['Loan Applications'],
         description=(
             'Create a loan application as a draft. Fill in all fields then '
             'upload documents, and finally call POST /api/loanapplication/applications/{id}/submit/ '
@@ -25,9 +26,9 @@ from loanapplication.serializers import LoanApplicationSerializer, LoanDocumentS
             'loan_duration (fixed: 12), collateral_type, collateral_description'
         ),
     ),
-    update=extend_schema(summary='Update a loan application'),
-    partial_update=extend_schema(summary='Partially update a loan application'),
-    destroy=extend_schema(summary='Delete a loan application'),
+    update=extend_schema(summary='Update a loan application', tags=['Loan Applications']),
+    partial_update=extend_schema(summary='Partially update a loan application', tags=['Loan Applications']),
+    destroy=extend_schema(summary='Delete a loan application', tags=['Loan Applications']),
 )
 class LoanApplicationViewSet(viewsets.ModelViewSet):
     serializer_class = LoanApplicationSerializer
@@ -41,6 +42,7 @@ class LoanApplicationViewSet(viewsets.ModelViewSet):
 
     @extend_schema(
         summary='Submit Application',
+        tags=['Loan Applications'],
         description=(
             'Finalizes and submits the loan application to the bank for review.\n\n'
             'Before submitting, the application must have:\n'
@@ -59,21 +61,18 @@ class LoanApplicationViewSet(viewsets.ModelViewSet):
     def submit(self, request, pk=None):
         application = self.get_object()
 
-        # Prevent re-submission
         if application.status == LoanApplication.SUBMITTED:
             return Response(
                 {'detail': 'This application has already been submitted.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Check documents are uploaded
         if not hasattr(application, 'documents'):
             return Response(
                 {'detail': 'Please upload the required documents before submitting.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Check all required docs for the loan type are present
         loan_type = application.loan_type.strip().upper()
         required_docs = REQUIRED_DOCS_BY_LOAN_TYPE.get(loan_type, [])
         docs = application.documents
@@ -90,7 +89,6 @@ class LoanApplicationViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Mark as submitted
         application.status = LoanApplication.SUBMITTED
         application.submitted_at = timezone.now()
         application.save(update_fields=['status', 'submitted_at'])
@@ -100,10 +98,11 @@ class LoanApplicationViewSet(viewsets.ModelViewSet):
 
 
 @extend_schema_view(
-    list=extend_schema(summary='List loan documents'),
-    retrieve=extend_schema(summary='Retrieve loan documents'),
+    list=extend_schema(summary='List loan documents', tags=['Loan Documents']),
+    retrieve=extend_schema(summary='Retrieve loan documents', tags=['Loan Documents']),
     create=extend_schema(
         summary='Upload Documents',
+        tags=['Loan Documents'],
         description=(
             'Upload required documents for a loan application (multipart/form-data).\n\n'
             '**Required for ALL loan types:** national_id, guarantor_id, '
@@ -116,9 +115,9 @@ class LoanApplicationViewSet(viewsets.ModelViewSet):
             'Allowed formats: PDF, JPG, PNG — max 5MB each.'
         ),
     ),
-    update=extend_schema(summary='Replace uploaded documents'),
-    partial_update=extend_schema(summary='Update specific documents'),
-    destroy=extend_schema(summary='Delete loan documents'),
+    update=extend_schema(summary='Replace uploaded documents', tags=['Loan Documents']),
+    partial_update=extend_schema(summary='Update specific documents', tags=['Loan Documents']),
+    destroy=extend_schema(summary='Delete loan documents', tags=['Loan Documents']),
 )
 class LoanDocumentViewSet(viewsets.ModelViewSet):
     serializer_class = LoanDocumentSerializer
