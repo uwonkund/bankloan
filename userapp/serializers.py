@@ -41,8 +41,7 @@ class LoginResponseSerializer(serializers.Serializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    """Accepts email or phone number + password."""
-    identifier = serializers.CharField(help_text='Email address or phone number')
+    email = serializers.EmailField(help_text='Email address')
     password = serializers.CharField(write_only=True)
 
 

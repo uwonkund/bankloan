@@ -96,7 +96,7 @@ class LoanApplicationSerializer(serializers.ModelSerializer):
             'status', 'submitted_at',
             'created_at', 'documents',
         ]
-        read_only_fields = ['id', 'user', 'status', 'submitted_at', 'created_at', 'loan_duration_display']
+        read_only_fields = ['id', 'user', 'loan_duration_display', 'status', 'submitted_at', 'created_at']
 
     def get_loan_duration_display(self, obj):
         return f'{obj.loan_duration} Months'

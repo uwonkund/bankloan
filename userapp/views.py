@@ -2,7 +2,6 @@ import random
 from django.utils import timezone
 from datetime import timedelta
 from django.db.models import Sum
-from django.contrib.auth import authenticate
 from rest_framework.views import APIView
 from rest_framework import generics, viewsets, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -162,7 +161,18 @@ class SignUpView(generics.CreateAPIView):
         },
     )
     def post(self, request, *args, **kwargs):
-        return super().post(request, *args, **kwargs)
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({
+                'success': False,
+                'message': 'Sign up failed. Please check the errors below.',
+                'errors': serializer.errors,
+            }, status=status.HTTP_400_BAD_REQUEST)
+        self.perform_create(serializer)
+        return Response({
+            'success': True,
+            'message': 'Account created successfully! Please log in.',
+        }, status=status.HTTP_201_CREATED)
 
 
 class LoginView(APIView):
@@ -171,8 +181,7 @@ class LoginView(APIView):
     @extend_schema(
         summary='Login',
         description=(
-            'Authenticate using email or phone number + password.\n\n'
-            'Send `identifier` (email or phone number) and `password`.\n\n'
+            'Authenticate using email and password.\n\n'
             'Returns JWT access and refresh tokens with user claims.'
         ),
         request=LoginSerializer,
@@ -183,22 +192,23 @@ class LoginView(APIView):
     )
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            return Response({
+                'success': False,
+                'message': 'Login failed. Please check the errors below.',
+                'errors': serializer.errors,
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-        identifier = serializer.validated_data['identifier']
+        identifier = serializer.validated_data['email']
         password = serializer.validated_data['password']
 
-        # Resolve user by email or phone
-        user = (
-            User.objects.filter(email=identifier).first() or
-            User.objects.filter(phone_number=identifier).first()
-        )
+        user = User.objects.filter(email=identifier).first()
 
         if not user or not user.check_password(password):
-            return Response(
-                {'detail': 'Invalid credentials.'},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
+            return Response({
+                'success': False,
+                'message': 'Login unsuccessful. Invalid email or password.',
+            }, status=status.HTTP_401_UNAUTHORIZED)
 
         # Generate JWT tokens
         refresh = RefreshToken.for_user(user)
@@ -210,6 +220,8 @@ class LoginView(APIView):
         refresh['user_type'] = user.user_type
 
         return Response({
+            'success': True,
+            'message': f'Welcome back, {user.first_name}! You have successfully logged in.',
             'access': str(refresh.access_token),
             'refresh': str(refresh),
         }, status=status.HTTP_200_OK)
