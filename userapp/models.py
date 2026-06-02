@@ -20,31 +20,32 @@ from django.core.validators import MinLengthValidator, MaxLengthValidator
 #         return self.name    
 class UserManager(BaseUserManager):
 
-    def create_user(self,email, full_name, phone_number,password=None, **extra_fields):
+    def create_user(self, email, first_name, last_name, phone_number=None, password=None, **extra_fields):
         """
         Creates and saves a User with the given email and password.
         """
-
         user = self.model(
             email=email,
-            full_name=full_name,
+            first_name=first_name,
+            last_name=last_name,
+            full_name=f'{first_name} {last_name}'.strip(),
             phone_number=phone_number,
             **extra_fields,
         )
         user.set_password(password)
-        print(user.set_password(password))
         user.save(using=self._db)
         return user
 
     def create_superuser(
-        self, email,full_name, phone_number, password=None, **extra_fields
+        self, email, first_name, last_name, phone_number=None, password=None, **extra_fields
     ):
         """
         Creates and saves a admin with the given email and password.
         """
         user = self.create_user(
             email=email,
-            full_name=full_name,
+            first_name=first_name,
+            last_name=last_name,
             phone_number=phone_number,
             password=password,
             **extra_fields,
@@ -69,12 +70,12 @@ class User(AbstractUser, PermissionsMixin):
     ]
 
     username=None
-    first_name=None
-    last_name=None
+    first_name = models.CharField(_("first name"), max_length=150, blank=True)
+    last_name = models.CharField(_("last name"), max_length=150, blank=True)
     email=models.EmailField(_("email address"), unique=True)
-    full_name=models.CharField(_("full name"),max_length=255)
+    full_name=models.CharField(_("full name"),max_length=255, blank=True)
     phone_number = models.CharField(
-        _("phone number"), max_length=255, unique=True, validators=[
+        _("phone number"), max_length=255, unique=True, blank=True, null=True, validators=[
             MinLengthValidator(limit_value=10),
             MaxLengthValidator(limit_value=13)
         ]
@@ -87,12 +88,18 @@ class User(AbstractUser, PermissionsMixin):
     is_staff = models.BooleanField(_("staff"), default=False)
     is_first_login = models.BooleanField(_("staff"), default=True)
     is_admin = models.BooleanField(_("admin"), default=False)  # a admin
+    profile_picture = models.ImageField(
+        _("profile picture"), upload_to='profile_pictures/', null=True, blank=True
+    )
+    national_id = models.CharField(_("national ID"), max_length=50, blank=True, null=True)
+    address = models.TextField(_("address"), blank=True, null=True)
+    account_number = models.CharField(_("account number"), max_length=20, blank=True, null=True, unique=True)
     created_on = models.DateTimeField(_("created on"), auto_now_add=True)
 
     objects = UserManager()
 
-    USERNAME_FIELD = _("email",)
-    REQUIRED_FIELDS = ["full_name","phone_number"]
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = ["first_name", "last_name"]
 
 
 
@@ -114,3 +121,85 @@ class User(AbstractUser, PermissionsMixin):
         return True
 
 # Create your models here.
+
+
+class LinkedBankAccount(models.Model):
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='linked_bank_accounts'
+    )
+    bank_name = models.CharField(_("bank name"), max_length=100)
+    account_holder_name = models.CharField(_("account holder name"), max_length=255)
+    account_number = models.CharField(_("account number"), max_length=30)
+    is_default = models.BooleanField(_("is default"), default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        # Only one default account per user
+        if self.is_default:
+            LinkedBankAccount.objects.filter(
+                user=self.user, is_default=True
+            ).exclude(pk=self.pk).update(is_default=False)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.bank_name} — {self.account_number} ({self.user.email})'
+
+
+class Notification(models.Model):
+    UNREAD = 'unread'
+    READ = 'read'
+    STATUS_CHOICES = [
+        (UNREAD, 'Unread'),
+        (READ, 'Read'),
+    ]
+
+    INFO = 'info'
+    SUCCESS = 'success'
+    WARNING = 'warning'
+    TYPE_CHOICES = [
+        (INFO, 'Info'),
+        (SUCCESS, 'Success'),
+        (WARNING, 'Warning'),
+    ]
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='notifications'
+    )
+    title = models.CharField(_("title"), max_length=255)
+    message = models.TextField(_("message"))
+    notification_type = models.CharField(
+        _("type"), max_length=10, choices=TYPE_CHOICES, default=INFO
+    )
+    status = models.CharField(
+        _("status"), max_length=10, choices=STATUS_CHOICES, default=UNREAD
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'[{self.notification_type.upper()}] {self.title} — {self.user.email}'
+
+
+class PasswordResetCode(models.Model):
+    EMAIL = 'email'
+    PHONE = 'phone'
+    CHANNEL_CHOICES = [
+        (EMAIL, 'Email'),
+        (PHONE, 'Phone'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reset_codes')
+    code = models.CharField(max_length=6)
+    channel = models.CharField(max_length=5, choices=CHANNEL_CHOICES)
+    is_used = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    def is_valid(self):
+        from django.utils import timezone
+        return not self.is_used and self.expires_at > timezone.now()
+
+    def __str__(self):
+        return f'Reset code for {self.user.email} via {self.channel}'

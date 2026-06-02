@@ -3,40 +3,40 @@ from decimal import Decimal
 
 
 class Loan(models.Model):
-    SOCIAL = 'social'
-    CONSTRUCTION = 'construction'
-    COMMERCIAL = 'commercial'
-    SALARY = 'salary'
-    IBIMINA = 'ibimina'
+    SOCIAL = ' SOCIAL'
+    CONSTRUCTION = 'CONSTRUCTION'
+    COMMERCIAL = 'COMMERCIAL'
+    SALARY = 'SALARY'
+    IBIMINA = 'IBIMINA'
 
     LOAN_TYPES = [
-        (SOCIAL, 'Social Loan'),
-        (CONSTRUCTION, 'Construction Loan'),
+        (SOCIAL, 'SOCIAL LOAN'),
+        (CONSTRUCTION, 'CONSTRACTION LOAN'),
         (COMMERCIAL, 'Commercial Loan'),
-        (SALARY, 'Salary Loan'),
-        (IBIMINA, 'Ibimina Loan'),
+        (SALARY, 'SALARY LOAN'),
+        (IBIMINA, 'IBIMINA LOAN'),
     ]
 
-    LAND = 'land'
-    HOUSE = 'house'
-    CAR = 'car'
-    OTHER = 'other'
+    LAND = 'LAND'
+    HOUSE = 'HOUSE'
+    CAR = 'CAR'
+    OTHER = 'OTHERS'
 
     COLLATERAL_TYPES = [
-        (LAND, 'Land'),
-        (HOUSE, 'House'),
-        (CAR, 'Car'),
-        (OTHER, 'Other'),
+        (LAND, 'LAND'),
+        (HOUSE, 'HOUSE'),
+        (CAR, 'CAR'),
+        (OTHER, 'OTHERS'),
     ]
 
-    PENDING = 'pending'
-    APPROVED = 'approved'
-    REJECTED = 'rejected'
+    PENDING = 'PENDING'
+    APPROVED = 'APPROVED'
+    REJECTED = 'REJECTED'
 
     STATUS_CHOICES = [
-        (PENDING, 'Pending'),
-        (APPROVED, 'Approved'),
-        (REJECTED, 'Rejected'),
+        (PENDING, 'PENDING'),
+        (APPROVED, 'APPROVED'),
+        (REJECTED, 'REJECTED'),
     ]
 
     # Interest rate choices — bank allows 17%, 18%, or 19% annually

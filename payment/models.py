@@ -273,10 +273,9 @@ class Penalty(models.Model):
 class Payment(models.Model):
 
     PAYMENT_METHOD = [
-        ('cash',          'Cash'),
-        ('bank_transfer', 'Bank Transfer'),
-        ('mobile_money',  'Mobile Money'),
-        ('cheque',        'Cheque'),
+        ('linked_bank_account', 'Linked Bank Account'),
+        ('debit_credit_card',   'Debit / Credit Card'),
+        ('mobile_money',        'Mobile Money'),
     ]
 
     PAYMENT_STATUS = [

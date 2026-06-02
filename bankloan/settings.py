@@ -30,7 +30,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -41,10 +41,22 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'django.contrib.staticfiles','rest_framework','userapp','loan','payment','rest_framework_simplejwt'
+    'django.contrib.staticfiles','rest_framework','userapp','loan','payment','rest_framework_simplejwt',
+    'corsheaders',
+    'drf_spectacular',
+    'loanapplication',
+
 ]
 
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Loan Management System API",
+    "DESCRIPTION": "API documentation for my Django project",
+    "VERSION": "1.0.0",
+}
+
 MIDDLEWARE = [
+
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -52,8 +64,10 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-]
 
+]
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
 ROOT_URLCONF = 'bankloan.urls'
 
 TEMPLATES = [
@@ -121,12 +135,16 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
+     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     
     'DEFAULT_AUTHENTICATION_CLASSES': (
         

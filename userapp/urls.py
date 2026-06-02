@@ -1,21 +1,35 @@
-# from rest_framework_simplejwt.views import (
-    
-#     TokenRefreshView,
-# )
-# from django.urls import path
-# from userapp.views import LoginMixin 
-# urlpatterns =[
-#     path('login/',LoginMixin.as_view(),name ='login'),
-#     path('token/refresh/',TokenRefreshView.as_view(),name ='token_refresh')
-# ]
-from django.urls import path,include
-from userapp.views import UserViewSet,LoginMixin
+from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from userapp.views import (
+    SocialAuthView, SignUpView, LoginView, TokenRefreshView,
+    ForgotPasswordView, VerifyResetCodeView, ResetPasswordView,
+    HomeDashboardView, UpdateProfilePictureView,
+    PersonalInfoView, LinkedBankAccountViewSet, NotificationViewSet,
+)
 
-router=DefaultRouter()
-router.register(r"users",UserViewSet,basename="user")
+router = DefaultRouter()
+router.register(r'settings/bank-accounts', LinkedBankAccountViewSet, basename='linked-bank-account')
+router.register(r'settings/notifications', NotificationViewSet, basename='notification')
+
 urlpatterns = [
-    path("",include(router.urls)),
-    path('login/', LoginMixin.as_view(), name='login'),
-  
+    # Auth
+    path('signup/', SignUpView.as_view(), name='signup'),
+    path('social-auth/', SocialAuthView.as_view(), name='social_auth'),
+    path('login/', LoginView.as_view(), name='login'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+
+    # Forgot Password flow
+    path('forgot-password/', ForgotPasswordView.as_view(), name='forgot_password'),
+    path('forgot-password/verify/', VerifyResetCodeView.as_view(), name='verify_reset_code'),
+    path('forgot-password/reset/', ResetPasswordView.as_view(), name='reset_password'),
+
+    # Dashboard
+    path('home/', HomeDashboardView.as_view(), name='home_dashboard'),
+
+    # Profile
+    path('profile/picture/', UpdateProfilePictureView.as_view(), name='update_profile_picture'),
+
+    # Settings
+    path('settings/personal-info/', PersonalInfoView.as_view(), name='personal_info'),
+    path('', include(router.urls)),
 ]
