@@ -80,7 +80,7 @@ class User(AbstractUser, PermissionsMixin):
             MaxLengthValidator(limit_value=13)
         ]
     )
-    is_active = models.BooleanField(_("is active"), default=False)
+    is_active = models.BooleanField(_("is active"), default=True)
     user_type = models.CharField(
         _("user type"), max_length=50, choices=USER_TYPES_CHOICES, default=USER
     )

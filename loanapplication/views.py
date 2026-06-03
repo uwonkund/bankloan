@@ -3,7 +3,8 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema, extend_schema_view
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
 from loanapplication.models import LoanApplication, LoanDocument, REQUIRED_DOCS_BY_LOAN_TYPE
 from loanapplication.serializers import LoanApplicationSerializer, LoanDocumentSerializer, SubmissionConfirmationSerializer
 
@@ -39,6 +40,16 @@ class LoanApplicationViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+    @extend_schema(
+        summary='Required Documents by Loan Type',
+        tags=['Loan Applications'],
+        description='Returns the list of required document fields for each loan type.',
+        responses={200: None},
+    )
+    @action(detail=False, methods=['get'], url_path='required-documents', permission_classes=[IsAuthenticated])
+    def required_documents(self, request):
+        return Response(REQUIRED_DOCS_BY_LOAN_TYPE)
 
     @extend_schema(
         summary='Submit Application',
@@ -105,13 +116,14 @@ class LoanApplicationViewSet(viewsets.ModelViewSet):
         tags=['Loan Documents'],
         description=(
             'Upload required documents for a loan application (multipart/form-data).\n\n'
-            '**Required for ALL loan types:** national_id, guarantor_id, '
-            'civil_status_cert, collateral_doc\n\n'
-            '**CONSTRUCTION:** + property_valuation, building_permit\n\n'
-            '**COMMERCIAL:** + property_valuation, business_plan (PDF only), trading_license\n\n'
-            '**SOCIAL:** + property_valuation\n\n'
-            '**SALARY:** + payslips, employment_letter\n\n'
-            '**IBIMINA:** + ibimina_certificate\n\n'
+            '**CONSTRUCTION:** national_id, guarantor_id, civil_status_cert, '
+            'property_valuation, collateral_doc, building_permit\n\n'
+            '**COMMERCIAL:** national_id, civil_status_cert, property_valuation\n\n'
+            '**SALARY:** national_id (applicant + guarantor), civil_status_cert, '
+            'payslips (last 3 months), employment_letter\n\n'
+            '**SOCIAL:** national_id, guarantor_id, civil_status_cert, '
+            'property_valuation (if applicable), collateral_doc\n\n'
+            '**IBIMINA:** national_id, civil_status_cert, ibimina_certificate, property_valuation\n\n'
             'Allowed formats: PDF, JPG, PNG — max 5MB each.'
         ),
     ),

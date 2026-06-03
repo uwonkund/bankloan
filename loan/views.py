@@ -5,23 +5,24 @@ from loan.models import Loan
 from loan.serializers import LoanSerializer, LoanAdminSerializer
 
 
-@extend_schema_view(
-    list=extend_schema(
-        summary='My Loans',
-        description='List all loans for the logged-in user. Admins see all loans.',
-    ),
-    retrieve=extend_schema(
-        summary='Loan Detail',
-        description='Get full details of a single loan including token, monthly payment and status.',
-    ),
-    create=extend_schema(
-        summary='Apply for a Loan',
-        description='Submit a new loan application. Status starts as PENDING until approved by admin.',
-    ),
-    update=extend_schema(summary='Update Loan'),
-    partial_update=extend_schema(summary='Partially Update Loan'),
-    destroy=extend_schema(summary='Delete Loan'),
-)
+# @extend_schema_view(
+#     list=extend_schema(
+#         summary='My Loans',
+#         description='List all loans for the logged-in user. Admins see all loans.',
+#     ),
+#     retrieve=extend_schema(
+#         summary='Loan Detail',
+#         description='Get full details of a single loan including token, monthly payment and status.',
+#     ),
+#     create=extend_schema(
+#         summary='Apply for a Loan',
+#         description='Submit a new loan application. Status starts as PENDING until approved by admin.',
+#     ),
+#     update=extend_schema(summary='Update Loan'),
+#     partial_update=extend_schema(summary='Partially Update Loan'),
+#     destroy=extend_schema(summary='Delete Loan'),
+# )
+@extend_schema(tags=['Loans'])
 class LoanViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 

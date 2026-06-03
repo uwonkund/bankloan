@@ -16,21 +16,17 @@ REQUIRED_DOCS_BY_LOAN_TYPE = {
         'property_valuation', 'collateral_doc', 'building_permit',
     ],
     'COMMERCIAL': [
-        'national_id', 'guarantor_id', 'civil_status_cert',
-        'property_valuation', 'collateral_doc',
-        'business_plan', 'trading_license',
+        'national_id', 'civil_status_cert', 'property_valuation',
     ],
     'SOCIAL': [
         'national_id', 'guarantor_id', 'civil_status_cert',
         'property_valuation', 'collateral_doc',
     ],
     'SALARY': [
-        'national_id', 'guarantor_id', 'civil_status_cert',
-        'collateral_doc', 'payslips', 'employment_letter',
+        'national_id', 'civil_status_cert', 'payslips', 'employment_letter',
     ],
     'IBIMINA': [
-        'national_id', 'guarantor_id', 'civil_status_cert',
-        'collateral_doc', 'ibimina_certificate',
+        'national_id', 'civil_status_cert', 'ibimina_certificate', 'property_valuation',
     ],
 }
 
@@ -47,16 +43,6 @@ def validate_document(file):
     ext = file.name.rsplit('.', 1)[-1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise ValidationError(f'Invalid file type (.{ext}). Allowed: PDF, JPG, PNG.')
-    if file.size == 0:
-        raise ValidationError('The uploaded file is empty.')
-    if file.size > MAX_SIZE_BYTES:
-        raise ValidationError('File size exceeds the 5MB limit.')
-
-
-def validate_pdf_only(file):
-    ext = file.name.rsplit('.', 1)[-1].lower()
-    if ext != 'pdf':
-        raise ValidationError('Only PDF files are allowed for this document.')
     if file.size == 0:
         raise ValidationError('The uploaded file is empty.')
     if file.size > MAX_SIZE_BYTES:
@@ -127,22 +113,26 @@ class LoanDocument(models.Model):
     national_id = models.FileField(
         upload_to='documents/national_id/',
         validators=[validate_document],
-        help_text='Personal national ID (front & back) — PDF, JPG or PNG, max 5MB',
-    )
-    guarantor_id = models.FileField(
-        upload_to='documents/guarantor_id/',
-        validators=[validate_document],
-        help_text='Guarantor national ID — PDF, JPG or PNG, max 5MB',
+        help_text='National ID or passport of applicant (and guarantor for salary loan) — PDF, JPG or PNG, max 5MB',
     )
     civil_status_cert = models.FileField(
         upload_to='documents/civil_status_cert/',
         validators=[validate_document],
-        help_text='Civil status certificate — PDF, JPG or PNG, max 5MB',
+        help_text='Civil status certificate (marriage/single/etc) — PDF, JPG or PNG, max 5MB',
+    )
+
+    # ── Construction & Social loan ──
+    guarantor_id = models.FileField(
+        upload_to='documents/guarantor_id/',
+        validators=[validate_document],
+        null=True, blank=True,
+        help_text='Guarantor national ID — required for Construction and Social loans',
     )
     collateral_doc = models.FileField(
         upload_to='documents/collateral_doc/',
         validators=[validate_document],
-        help_text='Collateral document / title — PDF, JPG or PNG, max 5MB',
+        null=True, blank=True,
+        help_text='Collateral document — required for Construction and Social loans',
     )
 
     # ── Construction & Commercial & Social ──
@@ -159,20 +149,6 @@ class LoanDocument(models.Model):
         validators=[validate_document],
         null=True, blank=True,
         help_text='Building permit — PDF, JPG or PNG, max 5MB',
-    )
-
-    # ── Commercial loan ──
-    business_plan = models.FileField(
-        upload_to='documents/business_plan/',
-        validators=[validate_pdf_only],
-        null=True, blank=True,
-        help_text='Business plan — PDF only, max 5MB',
-    )
-    trading_license = models.FileField(
-        upload_to='documents/trading_license/',
-        validators=[validate_document],
-        null=True, blank=True,
-        help_text='Trading license — PDF, JPG or PNG, max 5MB',
     )
 
     # ── Salary loan ──

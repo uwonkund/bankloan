@@ -14,10 +14,11 @@ class LoanDocumentSerializer(serializers.ModelSerializer):
         model = LoanDocument
         fields = [
             'id', 'application',
-            'national_id', 'guarantor_id', 'civil_status_cert',
-            'collateral_doc', 'property_valuation', 'building_permit',
-            'business_plan', 'trading_license',
-            'payslips', 'employment_letter', 'ibimina_certificate',
+            'national_id', 'civil_status_cert',
+            'guarantor_id', 'collateral_doc',
+            'property_valuation', 'building_permit',
+            'payslips', 'employment_letter',
+            'ibimina_certificate',
             'uploaded_at',
         ]
         read_only_fields = ['id', 'uploaded_at']
@@ -36,11 +37,6 @@ class LoanDocumentSerializer(serializers.ModelSerializer):
         if file.size > MAX_SIZE_BYTES:
             raise serializers.ValidationError('File size exceeds the 5MB limit.')
         return file
-
-    def validate_business_plan(self, value):
-        if value:
-            return self._validate_file(value, pdf_only=True)
-        return value
 
     def validate(self, attrs):
         application = attrs.get('application') or (
@@ -61,8 +57,8 @@ class LoanDocumentSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(errors)
 
         doc_fields = [
-            'national_id', 'guarantor_id', 'civil_status_cert', 'collateral_doc',
-            'property_valuation', 'building_permit', 'trading_license',
+            'national_id', 'civil_status_cert', 'guarantor_id', 'collateral_doc',
+            'property_valuation', 'building_permit',
             'payslips', 'employment_letter', 'ibimina_certificate',
         ]
         errors = {}
