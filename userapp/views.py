@@ -236,18 +236,28 @@ class ForgotPasswordView(APIView):
     permission_classes = [AllowAny]
 
     @extend_schema(
-        summary='Forgot Password — Request Verification Code',
+        summary='Forgot Password — Step 1: Select Channel & Send Code',
         tags=['User Management'],
         description=(
-            'Step 1 of password reset.\n\n'
-            'Provide your email or phone number and choose the channel '
-            '(`email` or `phone`) to receive a 6-digit verification code.\n\n'
-            'The code expires in 1 minute.'
+            '**Forgot Password Screen**\n\n'
+            'User enters their registered email or phone number and selects '
+            'where to receive the 6-digit verification code:\n\n'
+            '- `email` — Send to your email\n'
+            '- `phone` — Send to your phone\n\n'
+            '**Request body:**\n'
+            '```json\n'
+            '{\n'
+            '  "identifier": "user@email.com",\n'
+            '  "channel": "email"\n'
+            '}\n'
+            '```\n\n'
+            'On success a 6-digit code is sent to the chosen destination. '
+            'Code expires in 10 minutes.'
         ),
         request=ForgotPasswordSerializer,
         responses={
             200: OpenApiResponse(description='Verification code sent successfully'),
-            400: OpenApiResponse(description='Validation error'),
+            400: OpenApiResponse(description='Account not found or invalid channel'),
         },
     )
     def post(self, request):
@@ -280,7 +290,7 @@ class ForgotPasswordView(APIView):
             )
             destination = user.email
         else:
-            # Phone SMS integration goes here (e.g. Twilio)
+            # Phone SMS integration (e.g. Twilio) goes here
             destination = user.phone_number
 
         return Response({
@@ -294,16 +304,23 @@ class VerifyResetCodeView(APIView):
     permission_classes = [AllowAny]
 
     @extend_schema(
-        summary='Forgot Password — Verify Code',
+        summary='Forgot Password — Step 2: Enter Verification Code',
         tags=['User Management'],
         description=(
-            'Step 2 of password reset.\n\n'
-            'Submit the 6-digit verification code received via email or phone.\n\n'
-            'If valid, you can proceed to reset the password.'
+            '**Verification Code Screen**\n\n'
+            'User enters the 6-digit code received on their email or phone.\n\n'
+            '**Request body:**\n'
+            '```json\n'
+            '{\n'
+            '  "identifier": "user@email.com",\n'
+            '  "code": "123456"\n'
+            '}\n'
+            '```\n\n'
+            'If valid, proceed to Step 3 to set a new password.'
         ),
         request=VerifyResetCodeSerializer,
         responses={
-            200: OpenApiResponse(description='Code verified successfully'),
+            200: OpenApiResponse(description='Code verified. Proceed to reset password.'),
             400: OpenApiResponse(description='Invalid or expired code'),
         },
     )
@@ -320,17 +337,25 @@ class ResetPasswordView(APIView):
     permission_classes = [AllowAny]
 
     @extend_schema(
-        summary='Forgot Password — Set New Password',
+        summary='Forgot Password — Step 3: Set New Password',
         tags=['User Management'],
         description=(
-            'Step 3 of password reset.\n\n'
-            'Provide the verified code, new password and confirm password.\n\n'
+            '**Create New Password Screen**\n\n'
+            'User sets their new password after the code has been verified.\n\n'
+            '**Request body:**\n'
+            '```json\n'
+            '{\n'
+            '  "identifier": "user@email.com",\n'
+            '  "code": "123456",\n'
+            '  "new_password": "NewPass123",\n'
+            '  "confirm_password": "NewPass123"\n'
+            '}\n'
+            '```\n\n'
             '**Password requirements:**\n'
             '- At least 8 characters\n'
             '- At least one uppercase letter\n'
             '- At least one number\n\n'
-            'On success returns `{"detail": "Congratulations! Password changed!"}` '
-            'and the frontend should show the success screen with a Back to Login button.'
+            'On success returns `{"detail": "Congratulations! Password changed!"}`.'
         ),
         request=ResetPasswordSerializer,
         responses={

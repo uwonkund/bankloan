@@ -46,11 +46,16 @@ class LoginSerializer(serializers.Serializer):
 
 
 class ForgotPasswordSerializer(serializers.Serializer):
-    """Step 1 — provide email or phone to receive a verification code."""
-    identifier = serializers.CharField(help_text='Email address or phone number')
+    """
+    Step 1 — User provides their email or phone number and selects
+    where to receive the code (email or phone).
+    """
+    identifier = serializers.CharField(
+        help_text='Your registered email address or phone number'
+    )
     channel = serializers.ChoiceField(
         choices=[('email', 'Email'), ('phone', 'Phone')],
-        help_text='Choose where to receive the verification code',
+        help_text='Select where to receive the verification code: email or phone',
     )
 
     def validate(self, attrs):
@@ -61,9 +66,17 @@ class ForgotPasswordSerializer(serializers.Serializer):
             User.objects.filter(phone_number=identifier).first()
         )
         if not user:
-            raise serializers.ValidationError({'identifier': 'No account found with this email or phone number.'})
+            raise serializers.ValidationError(
+                {'identifier': 'No account found with this email or phone number.'}
+            )
+        if channel == 'email' and not user.email:
+            raise serializers.ValidationError(
+                {'channel': 'This account has no email address registered.'}
+            )
         if channel == 'phone' and not user.phone_number:
-            raise serializers.ValidationError({'channel': 'This account has no phone number registered.'})
+            raise serializers.ValidationError(
+                {'channel': 'This account has no phone number registered.'}
+            )
         attrs['user'] = user
         return attrs
 
