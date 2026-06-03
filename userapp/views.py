@@ -17,6 +17,7 @@ from userapp.serializers import (
     LoginSerializer, SocialAuthSerializer, UserProfileSerializer, PersonalInfoSerializer,
     LinkedBankAccountSerializer, NotificationSerializer,
     ForgotPasswordSerializer, VerifyResetCodeSerializer, ResetPasswordSerializer,
+    ResendCodeSerializer,
 )
 from userapp.models import User, LinkedBankAccount, Notification, PasswordResetCode
 from payment.models import Payment
@@ -239,24 +240,31 @@ class ForgotPasswordView(APIView):
         summary='Forgot Password — Step 1: Select Channel & Send Code',
         tags=['User Management'],
         description=(
-            '**Forgot Password Screen**\n\n'
-            'User enters their registered email or phone number and selects '
+            '**Screen: Forgot Password**\n\n'
+            'User enters their registered email or phone number then selects '
             'where to receive the 6-digit verification code:\n\n'
             '- `email` — Send to your email\n'
             '- `phone` — Send to your phone\n\n'
-            '**Request body:**\n'
+            'Then clicks **Continue**. Code is sent and expires in 10 minutes.\n\n'
+            '**Request:**\n'
             '```json\n'
             '{\n'
-            '  "identifier": "user@email.com",\n'
+            '  "identifier": "luna@gmail.com",\n'
             '  "channel": "email"\n'
             '}\n'
             '```\n\n'
-            'On success a 6-digit code is sent to the chosen destination. '
-            'Code expires in 10 minutes.'
+            '**Response:**\n'
+            '```json\n'
+            '{\n'
+            '  "detail": "Verification code sent to your email.",\n'
+            '  "channel": "email",\n'
+            '  "destination": "luna@gmail.com"\n'
+            '}\n'
+            '```'
         ),
         request=ForgotPasswordSerializer,
         responses={
-            200: OpenApiResponse(description='Verification code sent successfully'),
+            200: OpenApiResponse(description='Code sent successfully'),
             400: OpenApiResponse(description='Account not found or invalid channel'),
         },
     )
@@ -290,11 +298,76 @@ class ForgotPasswordView(APIView):
             )
             destination = user.email
         else:
-            # Phone SMS integration (e.g. Twilio) goes here
             destination = user.phone_number
 
         return Response({
             'detail': f'Verification code sent to your {channel}.',
+            'channel': channel,
+            'destination': destination,
+        }, status=status.HTTP_200_OK)
+
+
+class ResendCodeView(APIView):
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        summary='Forgot Password — Resend Verification Code',
+        tags=['User Management'],
+        description=(
+            '**Screen: Verification Code**\n\n'
+            'User clicks **"If no code received? Resend"** link.\n\n'
+            'Invalidates any previous unused codes and sends a fresh 6-digit code.\n\n'
+            '**Request:**\n'
+            '```json\n'
+            '{\n'
+            '  "identifier": "luna@gmail.com",\n'
+            '  "channel": "email"\n'
+            '}\n'
+            '```'
+        ),
+        request=ResendCodeSerializer,
+        responses={
+            200: OpenApiResponse(description='New code sent successfully'),
+            400: OpenApiResponse(description='Account not found'),
+        },
+    )
+    def post(self, request):
+        serializer = ResendCodeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = serializer.validated_data['user']
+        channel = serializer.validated_data['channel']
+
+        # Invalidate all previous unused codes
+        PasswordResetCode.objects.filter(user=user, is_used=False).update(is_used=True)
+
+        code = str(random.randint(100000, 999999))
+        PasswordResetCode.objects.create(
+            user=user,
+            code=code,
+            channel=channel,
+            expires_at=timezone.now() + timedelta(minutes=10),
+        )
+
+        if channel == 'email':
+            send_mail(
+                subject='Your New Password Reset Verification Code',
+                message=(
+                    f'Hello {user.first_name},\n\n'
+                    f'Your new verification code is: {code}\n\n'
+                    f'This code expires in 10 minutes.\n\n'
+                    f'If you did not request a password reset, please ignore this email.'
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=False,
+            )
+            destination = user.email
+        else:
+            destination = user.phone_number
+
+        return Response({
+            'detail': f'New verification code sent to your {channel}.',
             'channel': channel,
             'destination': destination,
         }, status=status.HTTP_200_OK)
@@ -307,20 +380,24 @@ class VerifyResetCodeView(APIView):
         summary='Forgot Password — Step 2: Enter Verification Code',
         tags=['User Management'],
         description=(
-            '**Verification Code Screen**\n\n'
+            '**Screen: Verification Email / Phone**\n\n'
             'User enters the 6-digit code received on their email or phone.\n\n'
-            '**Request body:**\n'
+            'The code input uses a numpad (1–9, 0).\n\n'
+            '**Request:**\n'
             '```json\n'
             '{\n'
-            '  "identifier": "user@email.com",\n'
-            '  "code": "123456"\n'
+            '  "identifier": "luna@gmail.com",\n'
+            '  "code": "287416"\n'
             '}\n'
             '```\n\n'
-            'If valid, proceed to Step 3 to set a new password.'
+            '**Response on success:**\n'
+            '```json\n'
+            '{"detail": "Code verified. You may now reset your password."}\n'
+            '```'
         ),
         request=VerifyResetCodeSerializer,
         responses={
-            200: OpenApiResponse(description='Code verified. Proceed to reset password.'),
+            200: OpenApiResponse(description='Code verified. Proceed to set new password.'),
             400: OpenApiResponse(description='Invalid or expired code'),
         },
     )
@@ -337,25 +414,27 @@ class ResetPasswordView(APIView):
     permission_classes = [AllowAny]
 
     @extend_schema(
-        summary='Forgot Password — Step 3: Set New Password',
+        summary='Forgot Password — Step 3: Change Password',
         tags=['User Management'],
         description=(
-            '**Create New Password Screen**\n\n'
-            'User sets their new password after the code has been verified.\n\n'
-            '**Request body:**\n'
+            '**Screen: Change Password**\n\n'
+            'User sets a new password for their account.\n\n'
+            '**Security Requirements shown on screen:**\n'
+            '- ✅ At least 8 characters\n'
+            '- ✅ One uppercase letter & one number\n\n'
+            '**Request:**\n'
             '```json\n'
             '{\n'
-            '  "identifier": "user@email.com",\n'
-            '  "code": "123456",\n'
+            '  "identifier": "luna@gmail.com",\n'
+            '  "code": "287416",\n'
             '  "new_password": "NewPass123",\n'
             '  "confirm_password": "NewPass123"\n'
             '}\n'
             '```\n\n'
-            '**Password requirements:**\n'
-            '- At least 8 characters\n'
-            '- At least one uppercase letter\n'
-            '- At least one number\n\n'
-            'On success returns `{"detail": "Congratulations! Password changed!"}`.'
+            '**Response on success:**\n'
+            '```json\n'
+            '{"detail": "Congratulations! Password changed!"}\n'
+            '```'
         ),
         request=ResetPasswordSerializer,
         responses={

@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from userapp.views import (
     SocialAuthView, SignUpView, LoginView, TokenRefreshView,
-    ForgotPasswordView, VerifyResetCodeView, ResetPasswordView,
+    ForgotPasswordView, ResendCodeView, VerifyResetCodeView, ResetPasswordView,
     HomeDashboardView, UpdateProfilePictureView,
     PersonalInfoView, LinkedBankAccountViewSet, NotificationViewSet,
 )
@@ -20,6 +20,7 @@ urlpatterns = [
 
     # Forgot Password flow
     path('forgot-password/', ForgotPasswordView.as_view(), name='forgot_password'),
+    path('forgot-password/resend/', ResendCodeView.as_view(), name='resend_code'),
     path('forgot-password/verify/', VerifyResetCodeView.as_view(), name='verify_reset_code'),
     path('forgot-password/reset/', ResetPasswordView.as_view(), name='reset_password'),
 

@@ -47,15 +47,15 @@ class LoginSerializer(serializers.Serializer):
 
 class ForgotPasswordSerializer(serializers.Serializer):
     """
-    Step 1 — User provides their email or phone number and selects
-    where to receive the code (email or phone).
+    Step 1 — User enters their email or phone number and selects
+    the channel (email or phone) to receive the 6-digit code.
     """
     identifier = serializers.CharField(
         help_text='Your registered email address or phone number'
     )
     channel = serializers.ChoiceField(
         choices=[('email', 'Email'), ('phone', 'Phone')],
-        help_text='Select where to receive the verification code: email or phone',
+        help_text='email = Send to your email | phone = Send to your phone',
     )
 
     def validate(self, attrs):
@@ -82,9 +82,14 @@ class ForgotPasswordSerializer(serializers.Serializer):
 
 
 class VerifyResetCodeSerializer(serializers.Serializer):
-    """Step 2 — submit the 6-digit verification code."""
-    identifier = serializers.CharField(help_text='Email address or phone number')
-    code = serializers.CharField(max_length=6, min_length=6)
+    """Step 2 — user enters the 6-digit code from their email/phone."""
+    identifier = serializers.CharField(
+        help_text='Same email or phone number used in Step 1'
+    )
+    code = serializers.CharField(
+        max_length=6, min_length=6,
+        help_text='6-digit verification code received via email or phone'
+    )
 
     def validate(self, attrs):
         identifier = attrs['identifier']
@@ -104,25 +109,65 @@ class VerifyResetCodeSerializer(serializers.Serializer):
         return attrs
 
 
+class ResendCodeSerializer(serializers.Serializer):
+    """Resend — generates a new code and sends it again."""
+    identifier = serializers.CharField(
+        help_text='Your registered email address or phone number'
+    )
+    channel = serializers.ChoiceField(
+        choices=[('email', 'Email'), ('phone', 'Phone')],
+        help_text='email or phone — same channel chosen in Step 1',
+    )
+
+    def validate(self, attrs):
+        identifier = attrs['identifier']
+        user = (
+            User.objects.filter(email=identifier).first() or
+            User.objects.filter(phone_number=identifier).first()
+        )
+        if not user:
+            raise serializers.ValidationError(
+                {'identifier': 'No account found with this email or phone number.'}
+            )
+        attrs['user'] = user
+        return attrs
+
+
 class ResetPasswordSerializer(serializers.Serializer):
-    """Step 3 — set new password after code is verified."""
-    identifier = serializers.CharField(help_text='Email address or phone number')
-    code = serializers.CharField(max_length=6, min_length=6)
-    new_password = serializers.CharField(write_only=True)
-    confirm_password = serializers.CharField(write_only=True)
+    """Step 3 — set new password + confirm password after code is verified."""
+    identifier = serializers.CharField(
+        help_text='Same email or phone number used in Steps 1 & 2'
+    )
+    code = serializers.CharField(
+        max_length=6, min_length=6,
+        help_text='The verified 6-digit code'
+    )
+    new_password = serializers.CharField(
+        write_only=True,
+        help_text='New password — min 8 chars, one uppercase letter, one number'
+    )
+    confirm_password = serializers.CharField(
+        write_only=True,
+        help_text='Must match new_password exactly'
+    )
 
     def validate_new_password(self, value):
+        errors = []
         if len(value) < 8:
-            raise serializers.ValidationError('Password must be at least 8 characters.')
+            errors.append('At least 8 characters.')
         if not re.search(r'[A-Z]', value):
-            raise serializers.ValidationError('Password must contain at least one uppercase letter.')
+            errors.append('At least one uppercase letter.')
         if not re.search(r'[0-9]', value):
-            raise serializers.ValidationError('Password must contain at least one number.')
+            errors.append('At least one number.')
+        if errors:
+            raise serializers.ValidationError(errors)
         return value
 
     def validate(self, attrs):
         if attrs['new_password'] != attrs['confirm_password']:
-            raise serializers.ValidationError({'confirm_password': 'Passwords do not match.'})
+            raise serializers.ValidationError(
+                {'confirm_password': 'Passwords do not match.'}
+            )
         identifier = attrs['identifier']
         user = (
             User.objects.filter(email=identifier).first() or
