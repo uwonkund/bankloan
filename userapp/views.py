@@ -214,6 +214,10 @@ class LoginView(APIView):
                 'message': 'Login unsuccessful. Invalid email or password.',
             }, status=status.HTTP_401_UNAUTHORIZED)
 
+        if not user.is_active:
+            user.is_active = True
+            user.save(update_fields=['is_active'])
+
         refresh = RefreshToken.for_user(user)
         refresh['first_name'] = user.first_name
         refresh['last_name'] = user.last_name

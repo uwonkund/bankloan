@@ -30,6 +30,7 @@ class UserManager(BaseUserManager):
             last_name=last_name,
             full_name=f'{first_name} {last_name}'.strip(),
             phone_number=phone_number,
+            is_active=True,
             **extra_fields,
         )
         user.set_password(password)
