@@ -3,7 +3,7 @@ from decimal import Decimal
 
 
 class Loan(models.Model):
-    SOCIAL = ' SOCIAL'
+    SOCIAL = 'SOCIAL'
     CONSTRUCTION = 'CONSTRUCTION'
     COMMERCIAL = 'COMMERCIAL'
     SALARY = 'SALARY'

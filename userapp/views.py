@@ -1,3 +1,4 @@
+import os
 import random
 from django.utils import timezone
 from datetime import timedelta
@@ -7,6 +8,7 @@ from django.db.models import Sum
 from rest_framework.views import APIView
 from rest_framework import generics, viewsets, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -132,7 +134,7 @@ class SocialAuthView(APIView):
             id_token,
             public_key,
             algorithms=['RS256'],
-            audience='com.yourapp.bundleid',
+            audience=os.getenv('APPLE_APP_BUNDLE_ID', 'com.yourapp.bundleid'),
         )
         name = data.get('name', {})
         return {
@@ -174,18 +176,22 @@ class SignUpView(generics.CreateAPIView):
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'login'
 
     @extend_schema(
         summary='Login',
         tags=['User Management'],
         description=(
             'Authenticate using email and password.\n\n'
-            'Returns JWT access and refresh tokens with user claims.'
+            'Returns JWT access and refresh tokens with user claims.\n\n'
+            '**Rate limited:** 5 attempts per minute.'
         ),
         request=LoginSerializer,
         responses={
             200: LoginResponseSerializer,
             401: OpenApiResponse(description='Invalid credentials'),
+            429: OpenApiResponse(description='Too many login attempts'),
         },
     )
     def post(self, request):
@@ -235,6 +241,8 @@ class TokenRefreshView(TokenRefreshView):
 
 class ForgotPasswordView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'forgot_password'
 
     @extend_schema(
         summary='Forgot Password — Step 1: Select Channel & Send Code',
@@ -266,6 +274,7 @@ class ForgotPasswordView(APIView):
         responses={
             200: OpenApiResponse(description='Code sent successfully'),
             400: OpenApiResponse(description='Account not found or invalid channel'),
+            429: OpenApiResponse(description='Too many requests'),
         },
     )
     def post(self, request):
@@ -309,6 +318,8 @@ class ForgotPasswordView(APIView):
 
 class ResendCodeView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'forgot_password'
 
     @extend_schema(
         summary='Forgot Password — Resend Verification Code',
@@ -329,6 +340,7 @@ class ResendCodeView(APIView):
         responses={
             200: OpenApiResponse(description='New code sent successfully'),
             400: OpenApiResponse(description='Account not found'),
+            429: OpenApiResponse(description='Too many requests'),
         },
     )
     def post(self, request):
@@ -338,7 +350,6 @@ class ResendCodeView(APIView):
         user = serializer.validated_data['user']
         channel = serializer.validated_data['channel']
 
-        # Invalidate all previous unused codes
         PasswordResetCode.objects.filter(user=user, is_used=False).update(is_used=True)
 
         code = str(random.randint(100000, 999999))
@@ -375,6 +386,8 @@ class ResendCodeView(APIView):
 
 class VerifyResetCodeView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'verify_code'
 
     @extend_schema(
         summary='Forgot Password — Step 2: Enter Verification Code',
@@ -399,6 +412,7 @@ class VerifyResetCodeView(APIView):
         responses={
             200: OpenApiResponse(description='Code verified. Proceed to set new password.'),
             400: OpenApiResponse(description='Invalid or expired code'),
+            429: OpenApiResponse(description='Too many attempts'),
         },
     )
     def post(self, request):
