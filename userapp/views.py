@@ -1,6 +1,8 @@
 import random
 from django.utils import timezone
 from datetime import timedelta
+from django.core.mail import send_mail
+from django.conf import settings
 from django.db.models import Sum
 from rest_framework.views import APIView
 from rest_framework import generics, viewsets, status
@@ -260,10 +262,26 @@ class ForgotPasswordView(APIView):
             user=user,
             code=code,
             channel=channel,
-            expires_at=timezone.now() + timedelta(minutes=1),
+            expires_at=timezone.now() + timedelta(minutes=10),
         )
 
-        destination = user.email if channel == 'email' else user.phone_number
+        if channel == 'email':
+            send_mail(
+                subject='Your Password Reset Verification Code',
+                message=(
+                    f'Hello {user.first_name},\n\n'
+                    f'Your verification code is: {code}\n\n'
+                    f'This code expires in 10 minutes.\n\n'
+                    f'If you did not request a password reset, please ignore this email.'
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=False,
+            )
+            destination = user.email
+        else:
+            # Phone SMS integration goes here (e.g. Twilio)
+            destination = user.phone_number
 
         return Response({
             'detail': f'Verification code sent to your {channel}.',
