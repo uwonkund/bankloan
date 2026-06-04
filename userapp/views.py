@@ -1,5 +1,6 @@
 import os
 import random
+import africastalking
 from django.utils import timezone
 from datetime import timedelta
 from django.core.mail import send_mail
@@ -243,41 +244,47 @@ class TokenRefreshView(TokenRefreshView):
     pass
 
 
+def _mask_destination(destination, channel):
+    """Mask email or phone like real apps: l***@gmail.com or +25***45678"""
+    if channel == 'email' and '@' in destination:
+        local, domain = destination.split('@', 1)
+        return f'{local[0]}***@{domain}'
+    else:
+        return f'{destination[:3]}***{destination[-4:]}'
+
+
 class ForgotPasswordView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'forgot_password'
 
     @extend_schema(
-        summary='Forgot Password — Step 1: Select Channel & Send Code',
+        summary='Forgot Password — Step 1: Send Verification Code',
         tags=['User Management'],
         description=(
             '**Screen: Forgot Password**\n\n'
-            'User enters their registered email or phone number then selects '
-            'where to receive the 6-digit verification code:\n\n'
-            '- `email` — Send to your email\n'
-            '- `phone` — Send to your phone\n\n'
-            'Then clicks **Continue**. Code is sent and expires in 10 minutes.\n\n'
+            'Customer enters their registered email or phone number. '
+            'The 6-digit OTP is sent to the **verified contact stored on their account**.\n\n'
+            '- Enter email → OTP goes to their registered email\n'
+            '- Enter phone number → OTP goes to their registered phone\n\n'
+            'Code expires in **10 minutes**.\n\n'
             '**Request:**\n'
             '```json\n'
-            '{\n'
-            '  "identifier": "luna@gmail.com",\n'
-            '  "channel": "email"\n'
-            '}\n'
+            '{"identifier": "luna@gmail.com"}\n'
             '```\n\n'
             '**Response:**\n'
             '```json\n'
             '{\n'
             '  "detail": "Verification code sent to your email.",\n'
             '  "channel": "email",\n'
-            '  "destination": "luna@gmail.com"\n'
+            '  "destination": "l***@gmail.com"\n'
             '}\n'
             '```'
         ),
         request=ForgotPasswordSerializer,
         responses={
             200: OpenApiResponse(description='Code sent successfully'),
-            400: OpenApiResponse(description='Account not found or invalid channel'),
+            400: OpenApiResponse(description='Account not found'),
             429: OpenApiResponse(description='Too many requests'),
         },
     )
@@ -297,6 +304,7 @@ class ForgotPasswordView(APIView):
         )
 
         if channel == 'email':
+            destination = user.email
             send_mail(
                 subject='Your Password Reset Verification Code',
                 message=(
@@ -306,17 +314,26 @@ class ForgotPasswordView(APIView):
                     f'If you did not request a password reset, please ignore this email.'
                 ),
                 from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[user.email],
+                recipient_list=[destination],
                 fail_silently=False,
             )
-            destination = user.email
         else:
             destination = user.phone_number
+            if not settings.DEBUG:
+                africastalking.initialize(settings.AT_USERNAME, settings.AT_API_KEY)
+                sms = africastalking.SMS
+                sms.send(
+                    f'Hello {user.first_name}, your verification code is: {code}. Expires in 10 minutes.',
+                    [destination],
+                    sender_id=settings.AT_SENDER_ID,
+                )
+            else:
+                print(f'\n[SMS DEBUG] To: {destination} | Code: {code}\n')
 
         return Response({
             'detail': f'Verification code sent to your {channel}.',
             'channel': channel,
-            'destination': destination,
+            'destination': _mask_destination(destination, channel),
         }, status=status.HTTP_200_OK)
 
 
@@ -330,14 +347,10 @@ class ResendCodeView(APIView):
         tags=['User Management'],
         description=(
             '**Screen: Verification Code**\n\n'
-            'User clicks **"If no code received? Resend"** link.\n\n'
-            'Invalidates any previous unused codes and sends a fresh 6-digit code.\n\n'
+            'Customer clicks **"Resend"**. Invalidates previous unused codes and sends a fresh one.\n\n'
             '**Request:**\n'
             '```json\n'
-            '{\n'
-            '  "identifier": "luna@gmail.com",\n'
-            '  "channel": "email"\n'
-            '}\n'
+            '{"identifier": "luna@gmail.com"}\n'
             '```'
         ),
         request=ResendCodeSerializer,
@@ -365,6 +378,7 @@ class ResendCodeView(APIView):
         )
 
         if channel == 'email':
+            destination = user.email
             send_mail(
                 subject='Your New Password Reset Verification Code',
                 message=(
@@ -374,18 +388,28 @@ class ResendCodeView(APIView):
                     f'If you did not request a password reset, please ignore this email.'
                 ),
                 from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[user.email],
+                recipient_list=[destination],
                 fail_silently=False,
             )
-            destination = user.email
         else:
             destination = user.phone_number
+            if not settings.DEBUG:
+                africastalking.initialize(settings.AT_USERNAME, settings.AT_API_KEY)
+                sms = africastalking.SMS
+                sms.send(
+                    f'Hello {user.first_name}, your new verification code is: {code}. Expires in 10 minutes.',
+                    [destination],
+                    sender_id=settings.AT_SENDER_ID,
+                )
+            else:
+                print(f'\n[SMS DEBUG] To: {destination} | Code: {code}\n')
 
         return Response({
             'detail': f'New verification code sent to your {channel}.',
             'channel': channel,
-            'destination': destination,
+            'destination': _mask_destination(destination, channel),
         }, status=status.HTTP_200_OK)
+
 
 
 class VerifyResetCodeView(APIView):

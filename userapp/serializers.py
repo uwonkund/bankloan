@@ -47,20 +47,15 @@ class LoginSerializer(serializers.Serializer):
 
 class ForgotPasswordSerializer(serializers.Serializer):
     """
-    Step 1 — User enters their email or phone number and selects
-    the channel (email or phone) to receive the 6-digit code.
+    Step 1 — User enters their registered email or phone number.
+    OTP is sent to the verified contact stored on their account.
     """
     identifier = serializers.CharField(
         help_text='Your registered email address or phone number'
     )
-    channel = serializers.ChoiceField(
-        choices=[('email', 'Email'), ('phone', 'Phone')],
-        help_text='email = Send to your email | phone = Send to your phone',
-    )
 
     def validate(self, attrs):
         identifier = attrs['identifier']
-        channel = attrs['channel']
         user = (
             User.objects.filter(email=identifier).first() or
             User.objects.filter(phone_number=identifier).first()
@@ -69,15 +64,9 @@ class ForgotPasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {'identifier': 'No account found with this email or phone number.'}
             )
-        if channel == 'email' and not user.email:
-            raise serializers.ValidationError(
-                {'channel': 'This account has no email address registered.'}
-            )
-        if channel == 'phone' and not user.phone_number:
-            raise serializers.ValidationError(
-                {'channel': 'This account has no phone number registered.'}
-            )
         attrs['user'] = user
+        # auto-detect channel from how they identified themselves
+        attrs['channel'] = 'email' if '@' in identifier else 'phone'
         return attrs
 
 
@@ -114,10 +103,6 @@ class ResendCodeSerializer(serializers.Serializer):
     identifier = serializers.CharField(
         help_text='Your registered email address or phone number'
     )
-    channel = serializers.ChoiceField(
-        choices=[('email', 'Email'), ('phone', 'Phone')],
-        help_text='email or phone — same channel chosen in Step 1',
-    )
 
     def validate(self, attrs):
         identifier = attrs['identifier']
@@ -130,6 +115,7 @@ class ResendCodeSerializer(serializers.Serializer):
                 {'identifier': 'No account found with this email or phone number.'}
             )
         attrs['user'] = user
+        attrs['channel'] = 'email' if '@' in identifier else 'phone'
         return attrs
 
 

@@ -36,7 +36,7 @@ class LoanApplicationViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return LoanApplication.objects.filter(user=self.request.user).order_by('-created_at')
+        return LoanApplication.objects.filter(user=self.request.user).select_related('documents').order_by('-created_at')
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -78,7 +78,9 @@ class LoanApplicationViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if not hasattr(application, 'documents'):
+        try:
+            docs = application.documents
+        except LoanApplication.documents.RelatedObjectDoesNotExist:
             return Response(
                 {'detail': 'Please upload the required documents before submitting.'},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -86,7 +88,6 @@ class LoanApplicationViewSet(viewsets.ModelViewSet):
 
         loan_type = application.loan_type.strip().upper()
         required_docs = REQUIRED_DOCS_BY_LOAN_TYPE.get(loan_type, [])
-        docs = application.documents
         missing = [
             field for field in required_docs
             if not getattr(docs, field, None)

@@ -106,14 +106,14 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# Email
+# Email — always use SMTP to send real emails
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = os.getenv('EMAIL_HOST_USER')
+DEFAULT_FROM_EMAIL = f'Bank Loan <{os.getenv("EMAIL_HOST_USER")}>'
 
 # Static files
 STATIC_URL = '/static/'
@@ -124,7 +124,16 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# Africa's Talking SMS (Rwanda — MTN & Airtel)
+AT_USERNAME = os.getenv('AT_USERNAME', 'sandbox')
+AT_API_KEY = os.getenv('AT_API_KEY', '')
+AT_SENDER_ID = os.getenv('AT_SENDER_ID', 'BankLoan')
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Keep uploaded files (≤5 MB) in memory — avoids slow temp-file disk writes
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024   # 5 MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB (covers all fields combined)
 
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',

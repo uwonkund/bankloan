@@ -19,7 +19,7 @@ REQUIRED_DOCS_BY_LOAN_TYPE = {
     ],
     'social': [
         'national_id', 'guarantor_id', 'civil_status_cert',
-        'property_valuation', 'collateral_doc',
+         'collateral_doc',
     ],
     'salary': [
         'national_id', 'guarantor_id', 'civil_status_cert',
