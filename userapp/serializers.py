@@ -46,48 +46,30 @@ class LoginSerializer(serializers.Serializer):
 
 
 class ForgotPasswordSerializer(serializers.Serializer):
-    """
-    Step 1 — User enters their registered email or phone number.
-    OTP is sent to the verified contact stored on their account.
-    """
-    identifier = serializers.CharField(
-        help_text='Your registered email address or phone number'
-    )
+    email = serializers.EmailField(help_text='Your registered email address')
 
     def validate(self, attrs):
-        identifier = attrs['identifier']
-        user = (
-            User.objects.filter(email=identifier).first() or
-            User.objects.filter(phone_number=identifier).first()
-        )
+        user = User.objects.filter(email=attrs['email']).first()
         if not user:
             raise serializers.ValidationError(
-                {'identifier': 'No account found with this email or phone number.'}
+                {'email': 'No account found with this email address.'}
             )
         attrs['user'] = user
-        # auto-detect channel from how they identified themselves
-        attrs['channel'] = 'email' if '@' in identifier else 'phone'
+        attrs['channel'] = 'email'
         return attrs
 
 
 class VerifyResetCodeSerializer(serializers.Serializer):
-    """Step 2 — user enters the 6-digit code from their email/phone."""
-    identifier = serializers.CharField(
-        help_text='Same email or phone number used in Step 1'
-    )
+    email = serializers.EmailField(help_text='Same email used in Step 1')
     code = serializers.CharField(
         max_length=6, min_length=6,
-        help_text='6-digit verification code received via email or phone'
+        help_text='6-digit verification code received via email'
     )
 
     def validate(self, attrs):
-        identifier = attrs['identifier']
-        user = (
-            User.objects.filter(email=identifier).first() or
-            User.objects.filter(phone_number=identifier).first()
-        )
+        user = User.objects.filter(email=attrs['email']).first()
         if not user:
-            raise serializers.ValidationError({'identifier': 'No account found.'})
+            raise serializers.ValidationError({'email': 'No account found.'})
         reset_code = PasswordResetCode.objects.filter(
             user=user, code=attrs['code'], is_used=False
         ).order_by('-created_at').first()
@@ -99,43 +81,24 @@ class VerifyResetCodeSerializer(serializers.Serializer):
 
 
 class ResendCodeSerializer(serializers.Serializer):
-    """Resend — generates a new code and sends it again."""
-    identifier = serializers.CharField(
-        help_text='Your registered email address or phone number'
-    )
+    email = serializers.EmailField(help_text='Your registered email address')
 
     def validate(self, attrs):
-        identifier = attrs['identifier']
-        user = (
-            User.objects.filter(email=identifier).first() or
-            User.objects.filter(phone_number=identifier).first()
-        )
+        user = User.objects.filter(email=attrs['email']).first()
         if not user:
             raise serializers.ValidationError(
-                {'identifier': 'No account found with this email or phone number.'}
+                {'email': 'No account found with this email address.'}
             )
         attrs['user'] = user
-        attrs['channel'] = 'email' if '@' in identifier else 'phone'
+        attrs['channel'] = 'email'
         return attrs
 
 
 class ResetPasswordSerializer(serializers.Serializer):
-    """Step 3 — set new password + confirm password after code is verified."""
-    identifier = serializers.CharField(
-        help_text='Same email or phone number used in Steps 1 & 2'
-    )
-    code = serializers.CharField(
-        max_length=6, min_length=6,
-        help_text='The verified 6-digit code'
-    )
-    new_password = serializers.CharField(
-        write_only=True,
-        help_text='New password — min 8 chars, one uppercase letter, one number'
-    )
-    confirm_password = serializers.CharField(
-        write_only=True,
-        help_text='Must match new_password exactly'
-    )
+    email = serializers.EmailField(help_text='Same email used in Steps 1 & 2')
+    code = serializers.CharField(max_length=6, min_length=6, help_text='The verified 6-digit code')
+    new_password = serializers.CharField(write_only=True, help_text='Min 8 chars, one uppercase, one number')
+    confirm_password = serializers.CharField(write_only=True, help_text='Must match new_password')
 
     def validate_new_password(self, value):
         errors = []
@@ -154,13 +117,9 @@ class ResetPasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {'confirm_password': 'Passwords do not match.'}
             )
-        identifier = attrs['identifier']
-        user = (
-            User.objects.filter(email=identifier).first() or
-            User.objects.filter(phone_number=identifier).first()
-        )
+        user = User.objects.filter(email=attrs['email']).first()
         if not user:
-            raise serializers.ValidationError({'identifier': 'No account found.'})
+            raise serializers.ValidationError({'email': 'No account found.'})
         reset_code = PasswordResetCode.objects.filter(
             user=user, code=attrs['code'], is_used=False
         ).order_by('-created_at').first()

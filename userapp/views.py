@@ -317,23 +317,11 @@ class ForgotPasswordView(APIView):
                 recipient_list=[destination],
                 fail_silently=False,
             )
-        else:
-            destination = user.phone_number
-            if not settings.DEBUG:
-                africastalking.initialize(settings.AT_USERNAME, settings.AT_API_KEY)
-                sms = africastalking.SMS
-                sms.send(
-                    f'Hello {user.first_name}, your verification code is: {code}. Expires in 10 minutes.',
-                    [destination],
-                    sender_id=settings.AT_SENDER_ID,
-                )
-            else:
-                print(f'\n[SMS DEBUG] To: {destination} | Code: {code}\n')
 
         return Response({
-            'detail': f'Verification code sent to your {channel}.',
-            'channel': channel,
-            'destination': _mask_destination(destination, channel),
+            'detail': 'Verification code sent to your email.',
+            'channel': 'email',
+            'destination': _mask_destination(user.email, 'email'),
         }, status=status.HTTP_200_OK)
 
 
@@ -377,37 +365,23 @@ class ResendCodeView(APIView):
             expires_at=timezone.now() + timedelta(minutes=10),
         )
 
-        if channel == 'email':
-            destination = user.email
-            send_mail(
-                subject='Your New Password Reset Verification Code',
-                message=(
-                    f'Hello {user.first_name},\n\n'
-                    f'Your new verification code is: {code}\n\n'
-                    f'This code expires in 10 minutes.\n\n'
-                    f'If you did not request a password reset, please ignore this email.'
-                ),
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[destination],
-                fail_silently=False,
-            )
-        else:
-            destination = user.phone_number
-            if not settings.DEBUG:
-                africastalking.initialize(settings.AT_USERNAME, settings.AT_API_KEY)
-                sms = africastalking.SMS
-                sms.send(
-                    f'Hello {user.first_name}, your new verification code is: {code}. Expires in 10 minutes.',
-                    [destination],
-                    sender_id=settings.AT_SENDER_ID,
-                )
-            else:
-                print(f'\n[SMS DEBUG] To: {destination} | Code: {code}\n')
+        send_mail(
+            subject='Your New Password Reset Verification Code',
+            message=(
+                f'Hello {user.first_name},\n\n'
+                f'Your new verification code is: {code}\n\n'
+                f'This code expires in 10 minutes.\n\n'
+                f'If you did not request a password reset, please ignore this email.'
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
 
         return Response({
-            'detail': f'New verification code sent to your {channel}.',
-            'channel': channel,
-            'destination': _mask_destination(destination, channel),
+            'detail': 'New verification code sent to your email.',
+            'channel': 'email',
+            'destination': _mask_destination(user.email, 'email'),
         }, status=status.HTTP_200_OK)
 
 
