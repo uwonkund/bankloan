@@ -263,21 +263,18 @@ class ForgotPasswordView(APIView):
         tags=['User Management'],
         description=(
             '**Screen: Forgot Password**\n\n'
-            'Customer enters their registered email or phone number. '
-            'The 6-digit OTP is sent to the **verified contact stored on their account**.\n\n'
-            '- Enter email → OTP goes to their registered email\n'
-            '- Enter phone number → OTP goes to their registered phone\n\n'
-            'Code expires in **10 minutes**.\n\n'
+            'Customer enters their registered email address. '
+            'A 6-digit verification code is sent immediately to that email.\n\n'
             '**Request:**\n'
             '```json\n'
-            '{"identifier": "luna@gmail.com"}\n'
+            '{"email": "customer@example.com"}\n'
             '```\n\n'
             '**Response:**\n'
             '```json\n'
             '{\n'
             '  "detail": "Verification code sent to your email.",\n'
             '  "channel": "email",\n'
-            '  "destination": "l***@gmail.com"\n'
+            '  "destination": "c***@example.com"\n'
             '}\n'
             '```'
         ),
@@ -335,10 +332,10 @@ class ResendCodeView(APIView):
         tags=['User Management'],
         description=(
             '**Screen: Verification Code**\n\n'
-            'Customer clicks **"Resend"**. Invalidates previous unused codes and sends a fresh one.\n\n'
+            'Customer clicks **"Resend"**. Invalidates previous unused codes and sends a fresh one to their email.\n\n'
             '**Request:**\n'
             '```json\n'
-            '{"identifier": "luna@gmail.com"}\n'
+            '{"email": "customer@example.com"}\n'
             '```'
         ),
         request=ResendCodeSerializer,
@@ -395,13 +392,12 @@ class VerifyResetCodeView(APIView):
         summary='Forgot Password — Step 2: Enter Verification Code',
         tags=['User Management'],
         description=(
-            '**Screen: Verification Email / Phone**\n\n'
-            'User enters the 6-digit code received on their email or phone.\n\n'
-            'The code input uses a numpad (1–9, 0).\n\n'
+            '**Screen: Verification Email**\n\n'
+            'Customer enters the 6-digit code received in their email inbox.\n\n'
             '**Request:**\n'
             '```json\n'
             '{\n'
-            '  "identifier": "luna@gmail.com",\n'
+            '  "email": "customer@example.com",\n'
             '  "code": "287416"\n'
             '}\n'
             '```\n\n'
@@ -434,14 +430,15 @@ class ResetPasswordView(APIView):
         tags=['User Management'],
         description=(
             '**Screen: Change Password**\n\n'
-            'User sets a new password for their account.\n\n'
-            '**Security Requirements shown on screen:**\n'
-            '- ✅ At least 8 characters\n'
-            '- ✅ One uppercase letter & one number\n\n'
+            'Customer sets a new password after verifying their email code.\n\n'
+            '**Password requirements:**\n'
+            '- At least 8 characters\n'
+            '- At least one uppercase letter\n'
+            '- At least one number\n\n'
             '**Request:**\n'
             '```json\n'
             '{\n'
-            '  "identifier": "luna@gmail.com",\n'
+            '  "email": "customer@example.com",\n'
             '  "code": "287416",\n'
             '  "new_password": "NewPass123",\n'
             '  "confirm_password": "NewPass123"\n'
