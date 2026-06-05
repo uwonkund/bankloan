@@ -156,20 +156,19 @@ class SignUpView(generics.CreateAPIView):
         description=(
             'Register a new user account.\n\n'
             '**Required fields:**\n'
-            '- `first_name` — Customer first name\n'
-            '- `last_name` — Customer last name\n'
+            '- `first_name`\n'
+            '- `last_name`\n'
             '- `email` — Must be unique\n'
-            '- `account_number` — Your bank account number (digits only, 6–20 digits). '
-            'This is required for security verification on sign in.\n'
             '- `password` — Min 8 characters\n'
             '- `re_enter_password` — Must match password\n\n'
+            '> The bank account number is assigned by the bank after registration. '
+            'The customer uses it on login as a security check.\n\n'
             '**Example:**\n'
             '```json\n'
             '{\n'
             '  "first_name": "John",\n'
             '  "last_name": "Doe",\n'
             '  "email": "john@example.com",\n'
-            '  "account_number": "1234567890",\n'
             '  "password": "SecurePass1",\n'
             '  "re_enter_password": "SecurePass1"\n'
             '}\n'
@@ -206,16 +205,17 @@ class LoginView(APIView):
         tags=['User Management'],
         description=(
             'Authenticate using email, account number and password.\n\n'
-            'The account number is required as an extra security layer.\n\n'
+            'The **account number is assigned by the bank** to the customer. '
+            'It is required as a security verification layer on every login.\n\n'
             '**Example:**\n'
             '```json\n'
             '{\n'
             '  "email": "john@example.com",\n'
-            '  "account_number": "1234567890",\n'
+            '  "account_number": "ACC-001234",\n'
             '  "password": "SecurePass1"\n'
             '}\n'
             '```\n\n'
-            'Returns JWT access and refresh tokens with user claims.\n\n'
+            'Returns JWT access and refresh tokens.\n\n'
             '**Rate limited:** 5 attempts per minute.'
         ),
         request=LoginSerializer,
@@ -246,7 +246,13 @@ class LoginView(APIView):
                 'message': 'Login unsuccessful. Invalid email or password.',
             }, status=status.HTTP_401_UNAUTHORIZED)
 
-        # Security check — account number must match
+        # Security check — bank-assigned account number must match
+        if not user.account_number:
+            return Response({
+                'success': False,
+                'message': 'Your account number has not been assigned yet. Please contact the bank.',
+            }, status=status.HTTP_403_FORBIDDEN)
+
         if user.account_number != account_number:
             return Response({
                 'success': False,
