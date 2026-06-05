@@ -18,7 +18,7 @@
 #         token ["email"] =user.email
 #         return token 
 from rest_framework import serializers
-from userapp.models import User, LinkedBankAccount, Notification, PasswordResetCode
+from userapp.models import User, LinkedBankAccount, Notification, PasswordResetCode, BankAccount
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 import datetime
 import re
@@ -173,16 +173,33 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'id', 'first_name', 'last_name', 'email',
-            'password', 're_enter_password', 'created_on',
+            'account_number', 'password', 're_enter_password', 'created_on',
         ]
         read_only_fields = ['id', 'created_on']
         extra_kwargs = {
             'password': {'write_only': True},
+            'account_number': {
+                'help_text': 'Your bank-assigned account number',
+            },
         }
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError('Email already exists.')
+        return value
+
+    def validate_account_number(self, value):
+        # Must exist in the bank's pre-loaded account numbers
+        bank_account = BankAccount.objects.filter(account_number=value).first()
+        if not bank_account:
+            raise serializers.ValidationError(
+                'This account number was not found in our system. Please contact the bank.'
+            )
+        # Must not already be taken by another registered customer
+        if bank_account.is_registered:
+            raise serializers.ValidationError(
+                'This account number is already registered to another user.'
+            )
         return value
 
     def validate(self, attrs):
@@ -194,7 +211,10 @@ class UserSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data.pop('re_enter_password')
-        return User.objects.create_user(**validated_data)
+        user = User.objects.create_user(**validated_data)
+        # Mark bank account as registered so no other customer can use it
+        BankAccount.objects.filter(account_number=user.account_number).update(is_registered=True)
+        return user
         
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):

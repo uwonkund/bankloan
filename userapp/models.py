@@ -124,6 +124,20 @@ class User(AbstractUser, PermissionsMixin):
 # Create your models here.
 
 
+class BankAccount(models.Model):
+    """Pre-loaded by bank admin. Customers use these account numbers to sign up."""
+    account_number = models.CharField(_("account number"), max_length=20, unique=True)
+    is_registered = models.BooleanField(
+        _("is registered"), default=False,
+        help_text='True once a customer has signed up with this account number'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        status = 'Registered' if self.is_registered else 'Available'
+        return f'{self.account_number} [{status}]'
+
+
 class LinkedBankAccount(models.Model):
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='linked_bank_accounts'
