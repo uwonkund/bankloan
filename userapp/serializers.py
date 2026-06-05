@@ -42,6 +42,7 @@ class LoginResponseSerializer(serializers.Serializer):
 
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField(help_text='Email address')
+    account_number = serializers.CharField(help_text='Your bank account number for security verification')
     password = serializers.CharField(write_only=True)
 
 
@@ -170,15 +171,30 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'first_name', 'last_name', 'email', 'password', 're_enter_password', 'created_on']
+        fields = [
+            'id', 'first_name', 'last_name', 'email',
+            'account_number', 'password', 're_enter_password', 'created_on',
+        ]
         read_only_fields = ['id', 'created_on']
         extra_kwargs = {
             'password': {'write_only': True},
+            'account_number': {
+                'help_text': 'Your unique bank account number for added security',
+            },
         }
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError('Email already exists.')
+        return value
+
+    def validate_account_number(self, value):
+        if User.objects.filter(account_number=value).exists():
+            raise serializers.ValidationError('This account number is already registered.')
+        if not value.isdigit():
+            raise serializers.ValidationError('Account number must contain digits only.')
+        if len(value) < 6 or len(value) > 20:
+            raise serializers.ValidationError('Account number must be between 6 and 20 digits.')
         return value
 
     def validate(self, attrs):

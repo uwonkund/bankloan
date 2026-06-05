@@ -153,7 +153,28 @@ class SignUpView(generics.CreateAPIView):
     @extend_schema(
         summary='Sign Up',
         tags=['User Management'],
-        description='Register a new user. Required fields: first_name, last_name, email, password, re_enter_password.',
+        description=(
+            'Register a new user account.\n\n'
+            '**Required fields:**\n'
+            '- `first_name` — Customer first name\n'
+            '- `last_name` — Customer last name\n'
+            '- `email` — Must be unique\n'
+            '- `account_number` — Your bank account number (digits only, 6–20 digits). '
+            'This is required for security verification on sign in.\n'
+            '- `password` — Min 8 characters\n'
+            '- `re_enter_password` — Must match password\n\n'
+            '**Example:**\n'
+            '```json\n'
+            '{\n'
+            '  "first_name": "John",\n'
+            '  "last_name": "Doe",\n'
+            '  "email": "john@example.com",\n'
+            '  "account_number": "1234567890",\n'
+            '  "password": "SecurePass1",\n'
+            '  "re_enter_password": "SecurePass1"\n'
+            '}\n'
+            '```'
+        ),
         request=UserSerializer,
         responses={
             201: UserSerializer,
@@ -184,7 +205,16 @@ class LoginView(APIView):
         summary='Login',
         tags=['User Management'],
         description=(
-            'Authenticate using email and password.\n\n'
+            'Authenticate using email, account number and password.\n\n'
+            'The account number is required as an extra security layer.\n\n'
+            '**Example:**\n'
+            '```json\n'
+            '{\n'
+            '  "email": "john@example.com",\n'
+            '  "account_number": "1234567890",\n'
+            '  "password": "SecurePass1"\n'
+            '}\n'
+            '```\n\n'
             'Returns JWT access and refresh tokens with user claims.\n\n'
             '**Rate limited:** 5 attempts per minute.'
         ),
@@ -206,6 +236,7 @@ class LoginView(APIView):
 
         identifier = serializer.validated_data['email']
         password = serializer.validated_data['password']
+        account_number = serializer.validated_data['account_number']
 
         user = User.objects.filter(email=identifier).first()
 
@@ -213,6 +244,13 @@ class LoginView(APIView):
             return Response({
                 'success': False,
                 'message': 'Login unsuccessful. Invalid email or password.',
+            }, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Security check — account number must match
+        if user.account_number != account_number:
+            return Response({
+                'success': False,
+                'message': 'Login unsuccessful. Invalid account number.',
             }, status=status.HTTP_401_UNAUTHORIZED)
 
         if not user.is_active:
@@ -292,7 +330,11 @@ class ForgotPasswordView(APIView):
         user = serializer.validated_data['user']
         channel = serializer.validated_data['channel']
 
-        code = str(random.randint(100000, 999999))
+        # Invalidate all previous unused codes for this user
+        PasswordResetCode.objects.filter(user=user, is_used=False).update(is_used=True)
+
+        # Generate a unique code not used by any other active reset
+        code = PasswordResetCode.generate_unique_code()
         PasswordResetCode.objects.create(
             user=user,
             code=code,
@@ -300,20 +342,18 @@ class ForgotPasswordView(APIView):
             expires_at=timezone.now() + timedelta(minutes=10),
         )
 
-        if channel == 'email':
-            destination = user.email
-            send_mail(
-                subject='Your Password Reset Verification Code',
-                message=(
-                    f'Hello {user.first_name},\n\n'
-                    f'Your verification code is: {code}\n\n'
-                    f'This code expires in 10 minutes.\n\n'
-                    f'If you did not request a password reset, please ignore this email.'
-                ),
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[destination],
-                fail_silently=False,
-            )
+        send_mail(
+            subject='Your Password Reset Verification Code',
+            message=(
+                f'Hello {user.first_name},\n\n'
+                f'Your verification code is: {code}\n\n'
+                f'This code expires in 10 minutes.\n\n'
+                f'If you did not request a password reset, please ignore this email.'
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
 
         return Response({
             'detail': 'Verification code sent to your email.',
@@ -354,7 +394,8 @@ class ResendCodeView(APIView):
 
         PasswordResetCode.objects.filter(user=user, is_used=False).update(is_used=True)
 
-        code = str(random.randint(100000, 999999))
+        # Generate a unique code not used by any other active reset
+        code = PasswordResetCode.generate_unique_code()
         PasswordResetCode.objects.create(
             user=user,
             code=code,

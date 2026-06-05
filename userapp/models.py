@@ -192,7 +192,7 @@ class PasswordResetCode(models.Model):
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reset_codes')
-    code = models.CharField(max_length=6)
+    code = models.CharField(max_length=6, unique=True)
     channel = models.CharField(max_length=5, choices=CHANNEL_CHOICES)
     is_used = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -201,6 +201,16 @@ class PasswordResetCode(models.Model):
     def is_valid(self):
         from django.utils import timezone
         return not self.is_used and self.expires_at > timezone.now()
+
+    @classmethod
+    def generate_unique_code(cls):
+        """Generate a 6-digit code that is different from any previously sent code for all users."""
+        import random
+        while True:
+            code = str(random.randint(100000, 999999))
+            # Must not match any active OR recently used code in the entire system
+            if not cls.objects.filter(code=code).exists():
+                return code
 
     def __str__(self):
         return f'Reset code for {self.user.email} via {self.channel}'
