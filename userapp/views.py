@@ -22,7 +22,7 @@ from userapp.serializers import (
     ForgotPasswordSerializer, VerifyResetCodeSerializer, ResetPasswordSerializer,
     ResendCodeSerializer,
 )
-from userapp.models import User, LinkedBankAccount, Notification, PasswordResetCode
+from userapp.models import User, LinkedBankAccount, Notification, PasswordResetCode, BankAccount
 from payment.models import Payment
 from payment.serializers import DashboardPaymentHistorySerializer
 
@@ -95,6 +95,9 @@ class SocialAuthView(APIView):
             'access': str(refresh.access_token),
             'refresh': str(refresh),
             'is_new_user': created,
+            'user_type': user.user_type,
+            'email': user.email,
+            'full_name': user.full_name,
         }, status=status.HTTP_200_OK)
 
     def _verify_token(self, provider, id_token):
@@ -205,14 +208,11 @@ class LoginView(APIView):
         summary='Login',
         tags=['User Management'],
         description=(
-            'Authenticate using email, account number and password.\n\n'
-            'The **account number is assigned by the bank** to the customer. '
-            'It is required as a security verification layer on every login.\n\n'
+            'Authenticate using email and password.\n\n'
             '**Example:**\n'
             '```json\n'
             '{\n'
             '  "email": "john@example.com",\n'
-            '  "account_number": "ACC-001234",\n'
             '  "password": "SecurePass1"\n'
             '}\n'
             '```\n\n'
@@ -237,7 +237,6 @@ class LoginView(APIView):
 
         identifier = serializer.validated_data['email']
         password = serializer.validated_data['password']
-        account_number = serializer.validated_data['account_number']
 
         user = User.objects.filter(email=identifier).first()
 
@@ -247,18 +246,18 @@ class LoginView(APIView):
                 'message': 'Login unsuccessful. Invalid email or password.',
             }, status=status.HTTP_401_UNAUTHORIZED)
 
-        # Security check — bank-assigned account number must match
-        if not user.account_number:
-            return Response({
-                'success': False,
-                'message': 'Your account number has not been assigned yet. Please contact the bank.',
-            }, status=status.HTTP_403_FORBIDDEN)
+        # Security check — commented out bank-assigned account number match verification
+        # if not user.account_number:
+        #     return Response({
+        #         'success': False,
+        #         'message': 'Your account number has not been assigned yet. Please contact the bank.',
+        #     }, status=status.HTTP_403_FORBIDDEN)
 
-        if user.account_number != account_number:
-            return Response({
-                'success': False,
-                'message': 'Login unsuccessful. Invalid account number.',
-            }, status=status.HTTP_401_UNAUTHORIZED)
+        # if user.account_number != account_number:
+        #     return Response({
+        #         'success': False,
+        #         'message': 'Login unsuccessful. Invalid account number.',
+        #     }, status=status.HTTP_401_UNAUTHORIZED)
 
         if not user.is_active:
             user.is_active = True
@@ -277,6 +276,9 @@ class LoginView(APIView):
             'message': f'Welcome back, {user.first_name}! You have successfully logged in.',
             'access': str(refresh.access_token),
             'refresh': str(refresh),
+            'user_type': user.user_type,
+            'email': user.email,
+            'full_name': user.full_name,
         }, status=status.HTTP_200_OK)
 
 

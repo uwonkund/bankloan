@@ -6,6 +6,7 @@ from userapp.views import (
     HomeDashboardView, UpdateProfilePictureView,
     PersonalInfoView, LinkedBankAccountViewSet, NotificationViewSet,
 )
+from userapp.admin_views import AdminDashboardView
 
 router = DefaultRouter()
 router.register(r'settings/bank-accounts', LinkedBankAccountViewSet, basename='linked-bank-account')
@@ -26,6 +27,9 @@ urlpatterns = [
 
     # Dashboard
     path('home/', HomeDashboardView.as_view(), name='home_dashboard'),
+    
+    # Admin Dashboard
+    path('admin/dashboard/', AdminDashboardView.as_view(), name='admin_dashboard'),
 
     # Profile
     path('profile/picture/', UpdateProfilePictureView.as_view(), name='update_profile_picture'),

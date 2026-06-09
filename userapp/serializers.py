@@ -42,7 +42,6 @@ class LoginResponseSerializer(serializers.Serializer):
 
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField(help_text='Email address')
-    account_number = serializers.CharField(help_text='Your bank account number for security verification')
     password = serializers.CharField(write_only=True)
 
 
@@ -179,6 +178,9 @@ class UserSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'password': {'write_only': True},
             'account_number': {
+                'required': False,
+                'allow_blank': True,
+                'allow_null': True,
                 'help_text': 'Your bank-assigned account number',
             },
         }
@@ -189,17 +191,17 @@ class UserSerializer(serializers.ModelSerializer):
         return value
 
     def validate_account_number(self, value):
-        # Must exist in the bank's pre-loaded account numbers
-        bank_account = BankAccount.objects.filter(account_number=value).first()
-        if not bank_account:
-            raise serializers.ValidationError(
-                'This account number was not found in our system. Please contact the bank.'
-            )
-        # Must not already be taken by another registered customer
-        if bank_account.is_registered:
-            raise serializers.ValidationError(
-                'This account number is already registered to another user.'
-            )
+        # Commented out account number verification as requested
+        # bank_account = BankAccount.objects.filter(account_number=value).first()
+        # if not bank_account:
+        #     raise serializers.ValidationError(
+        #         'This account number was not found in our system. Please contact the bank.'
+        #     )
+        # # Must not already be taken by another registered customer
+        # if bank_account.is_registered:
+        #     raise serializers.ValidationError(
+        #         'This account number is already registered to another user.'
+        #     )
         return value
 
     def validate(self, attrs):
@@ -212,8 +214,8 @@ class UserSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop('re_enter_password')
         user = User.objects.create_user(**validated_data)
-        # Mark bank account as registered so no other customer can use it
-        BankAccount.objects.filter(account_number=user.account_number).update(is_registered=True)
+        # Commented out bank account registration update
+        # BankAccount.objects.filter(account_number=user.account_number).update(is_registered=True)
         return user
         
 
