@@ -1,0 +1,24 @@
+databases:
+  - name: bankloan_db
+    databaseName: bankloan
+    user: bankloan_user
+
+services:
+  - type: web
+    name: bankloan-api
+    env: python
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn bankloan.wsgi:application"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bankloan_db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+    healthCheckPath: /api/userapp/login/
+    autoDeploy: true
