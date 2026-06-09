@@ -100,12 +100,12 @@ class AdminDashboardView(APIView):
         ]
         
         # Get recent payments (last 10)
-        recent_payments = Payment.objects.select_related('loan', 'loan__user').order_by('-payment_date')[:10]
+        recent_payments = Payment.objects.select_related('loan', 'loan__user_id').order_by('-payment_date')[:10]
         recent_payments_data = [
             {
                 'id': payment.id,
-                'user_email': payment.loan.user.email if payment.loan and payment.loan.user else 'N/A',
-                'user_name': payment.loan.user.full_name if payment.loan and payment.loan.user else 'N/A',
+                'user_email': payment.loan.user_id.email if payment.loan and payment.loan.user_id else 'N/A',
+                'user_name': payment.loan.user_id.full_name if payment.loan and payment.loan.user_id else 'N/A',
                 'amount': float(payment.amount_paid),
                 'payment_date': payment.payment_date,
                 'payment_method': payment.payment_method,
@@ -120,8 +120,8 @@ class AdminDashboardView(APIView):
         pending_apps_data = [
             {
                 'id': app.id,
-                'user_email': app.user.email,
-                'user_name': app.user.full_name,
+                'user_email': app.user.email if app.user else 'N/A',
+                'user_name': app.user.full_name if app.user else 'N/A',
                 'loan_type': app.loan_type,
                 'amount': app.amount,
                 'created_at': app.created_at,
